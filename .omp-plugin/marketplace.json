@@ -1,7 +1,7 @@
 {
   "name": "omp-portal",
   "owner": {
-    "name": "gosunuts"
+    "name": "gosuda"
   },
   "metadata": {
     "description": "Oh My Pi plugins for Portal, the self-hostable tunnel network.",
@@ -14,10 +14,10 @@
       "source": "./",
       "version": "0.1.0",
       "author": {
-        "name": "gosunuts"
+        "name": "gosuda"
       },
-      "homepage": "https://github.com/gosunuts/omp-portal",
-      "repository": "https://github.com/gosunuts/omp-portal",
+      "homepage": "https://github.com/gosuda/omp-portal",
+      "repository": "https://github.com/gosuda/omp-portal",
       "license": "MIT",
       "keywords": ["omp", "portal", "collab", "tunnel", "remote", "phone"],
       "category": "productivity"
