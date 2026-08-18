@@ -5,7 +5,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gokch/omp-portal.git"
+    "url": "git+https://github.com/gosunuts/omp-portal.git"
   },
   "keywords": ["omp", "oh-my-pi", "portal", "collab", "tunnel", "remote"],
   "files": [
