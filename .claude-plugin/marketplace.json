@@ -1,0 +1,26 @@
+{
+  "name": "omp-portal",
+  "owner": {
+    "name": "gokch"
+  },
+  "metadata": {
+    "description": "Oh My Pi plugins for Portal, the self-hostable tunnel network.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "omp-collab",
+      "description": "Share a live OMP session with a phone or remote browser through OMP collab, via the hosted relay or a self-hosted relay behind a Portal tunnel.",
+      "source": "./",
+      "version": "0.1.0",
+      "author": {
+        "name": "gokch"
+      },
+      "homepage": "https://github.com/gokch/omp-portal",
+      "repository": "https://github.com/gokch/omp-portal",
+      "license": "MIT",
+      "keywords": ["omp", "portal", "collab", "tunnel", "remote", "phone"],
+      "category": "productivity"
+    }
+  ]
+}

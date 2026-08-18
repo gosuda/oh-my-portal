@@ -1,0 +1,20 @@
+{
+  "name": "omp-portal",
+  "version": "0.1.0",
+  "description": "Oh My Pi plugin that shares a live OMP session with a phone or remote browser through OMP collab, optionally behind a self-hosted Portal relay.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gokch/omp-portal.git"
+  },
+  "keywords": ["omp", "oh-my-pi", "portal", "collab", "tunnel", "remote"],
+  "files": [
+    ".omp-plugin/marketplace.json",
+    ".claude-plugin/marketplace.json",
+    ".claude-plugin/plugin.json",
+    "skills/",
+    "README.md",
+    "LICENSE"
+  ],
+  "omp": {}
+}
