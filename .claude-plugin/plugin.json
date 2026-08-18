@@ -1,13 +1,13 @@
 {
-  "name": "omp-collab",
-  "version": "0.1.0",
+  "name": "omp-portal",
+  "version": "0.1.1",
   "description": "Share a live OMP session with a phone or remote browser through OMP collab, via the hosted relay or a self-hosted relay behind a Portal tunnel.",
   "author": {
-    "name": "gosunuts",
-    "url": "https://github.com/gosunuts"
+    "name": "gosuda",
+    "url": "https://github.com/gosuda"
   },
-  "homepage": "https://github.com/gosunuts/omp-portal",
-  "repository": "https://github.com/gosunuts/omp-portal",
+  "homepage": "https://github.com/gosuda/omp-portal",
+  "repository": "https://github.com/gosuda/omp-portal",
   "license": "MIT",
   "keywords": ["omp", "portal", "collab", "tunnel", "remote", "phone"]
 }

@@ -16,17 +16,17 @@ The plugin teaches an agent the full workflow: OMP checks, relay startup, tunnel
 ### From this repository (OMP marketplace)
 
 ```sh
-omp plugin marketplace add gosunuts/omp-portal
-omp plugin install omp-collab@omp-portal
+omp plugin marketplace add gosuda/omp-portal
+omp plugin install omp-portal@omp-portal
 ```
 
-Or inside the OMP TUI: `/marketplace add gosunuts/omp-portal`, then `/marketplace install omp-collab@omp-portal`.
+Or inside the OMP TUI: `/marketplace add gosuda/omp-portal`, then `/marketplace install omp-portal@omp-portal`.
 
 Local development:
 
 ```sh
 omp plugin marketplace add ./omp-portal
-omp plugin install omp-collab@omp-portal
+omp plugin install omp-portal@omp-portal
 ```
 
 Run `/reload-plugins` after installing to refresh skills.
@@ -42,8 +42,8 @@ omp plugin install omp-portal
 The catalog is also published in the Claude Code plugin registry format (`.claude-plugin/marketplace.json`):
 
 ```sh
-claude plugin marketplace add gosunuts/omp-portal
-claude plugin install omp-collab@omp-portal
+claude plugin marketplace add gosuda/omp-portal
+claude plugin install omp-portal@omp-portal
 ```
 
 ## Layout
@@ -53,7 +53,7 @@ omp-portal/
 ├── .omp-plugin/marketplace.json        # OMP marketplace catalog (preferred)
 ├── .claude-plugin/marketplace.json     # Claude Code-compatible catalog
 ├── .claude-plugin/plugin.json          # plugin manifest
-├── skills/omp-collab/
+├── skills/omp-collab/                   # skill name stays omp-collab
 │   ├── SKILL.md                        # agent workflow
 │   └── references/omp-collab-details.md
 ├── package.json                        # npm distribution
