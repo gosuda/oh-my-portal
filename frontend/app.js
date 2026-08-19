@@ -290,11 +290,10 @@ function showPicker(title, items, onPick) {
 }
 
 document.addEventListener('click', (e) => {
-  // Send/Stop clicks open pickers themselves — don't treat as outside-clicks
-  if (e.target.closest('#sendBtn, #stopBtn')) return;
+  // Send/Stop/autocomplete clicks manage pickers themselves — not outside-clicks
+  if (e.target.closest('#sendBtn, #stopBtn, #cmdList')) return;
   if (pickerEl.classList.contains('visible') && !pickerEl.contains(e.target)) hidePicker();
 });
-
 function renderModelPicker(models) {
   if (!models.length) return;
   const currentModel = (document.getElementById('model')?.textContent || '').trim();
@@ -562,19 +561,28 @@ function hideAutocomplete() {
   cmdActiveIndex = -1;
 }
 function showCmds(text) {
-  if (!text.startsWith('/') || text.includes(' ')) {
-    cmdList.classList.remove('visible');
-    cmdList.innerHTML = '';
-    cmdActiveIndex = -1;
-    return;
+  if (!text.startsWith('/')) { hideAutocomplete(); return; }
+
+  const sp = text.indexOf(' ');
+  let matches;
+  if (sp === -1) {
+    // Level 1: top-level commands only — subcommands stay hidden until
+    // the parent is chosen (2-level cascade, like the pickers).
+    const q = text.slice(1).toLowerCase();
+    matches = COMMANDS.filter(c => !c.cmd.includes(' ') && c.cmd.slice(1).toLowerCase().startsWith(q));
+  } else {
+    // Level 2: subcommands of the typed parent. Once the subcommand name
+    // is complete (space follows), the user is typing arguments — hide.
+    if (text.slice(sp + 1).trim().includes(' ')) { hideAutocomplete(); return; }
+    const parent = text.slice(0, sp).toLowerCase() + ' ';
+    const sub = text.slice(sp + 1).toLowerCase().trim();
+    matches = COMMANDS.filter(c =>
+      c.cmd.toLowerCase().startsWith(parent) &&
+      c.cmd.slice(parent.length).toLowerCase().startsWith(sub)
+    );
   }
-  const q = text.slice(1).toLowerCase();
-  const matches = COMMANDS.filter(c => c.cmd.slice(1).toLowerCase().startsWith(q));
-  if (matches.length === 0) {
-    cmdList.classList.remove('visible');
-    cmdList.innerHTML = '';
-    return;
-  }
+
+  if (matches.length === 0) { hideAutocomplete(); return; }
   cmdList.innerHTML = '';
   for (const m of matches) {
     const el = document.createElement('div');
@@ -584,14 +592,10 @@ function showCmds(text) {
       input.value = m.cmd + ' ';
       input.focus();
       hideCmds();
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     };
     cmdList.appendChild(el);
   }
-  cmdList.classList.add('visible');
-}
-
-function hideCmds() {
-  cmdList.classList.remove('visible');
   cmdActiveIndex = -1;
 }
 
