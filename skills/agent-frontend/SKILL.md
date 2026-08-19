@@ -1,12 +1,12 @@
 ---
 name: agent-frontend
-description: Deploy a rich web chat interface for any CLI agent through a Portal tunnel — streaming text, tool cards, thinking display, slash commands with autocomplete, and per-person nicknames, served from a Bun bridge with pluggable adapters. Use when the user asks for a proper web UI (not a terminal) to interact with their agent from a phone or browser, or wants a chat-like interface instead of a TUI. Do not use for terminal access (agent-terminal) or OMP's native collab (oh-my-omp).
+description: Deploy a rich web chat interface for any CLI agent through a Portal tunnel — streaming markdown, syntax-highlighted code, rich tool cards, model/thinking pickers, session cost tracking, an Agent Hub with subagent transcripts, and capability-negotiated adapters, served from a Bun bridge. Use when the user asks for a proper web UI (not a terminal) to interact with their agent from a phone or browser, or wants a chat-like interface instead of a TUI. Do not use for terminal access (agent-terminal) or OMP's native collab (oh-my-omp).
 license: MIT
 ---
 
 # Rich Web Chat Interface for Any CLI Agent
 
-A polished web chat — streaming text, collapsible tool cards, thinking display, slash commands with autocomplete — over any CLI agent. The bridge process adapts each agent's protocol into a universal event stream the frontend renders. Currently supports OMP (full features), Claude Code, Codex, and opencode via SDK/API adapters, plus a universal subprocess fallback for everything else.
+A polished mobile-first web chat over any CLI agent. Adapters translate each agent's protocol into a universal event stream; the frontend negotiates capabilities with the active adapter and shows only what that agent supports. OMP gets the full feature set; other agents get streaming chat with conversation history.
 
 ## Architecture
 
@@ -23,26 +23,46 @@ Phone/browser ── HTTPS ──→ Portal tunnel ──→ caddy (auth) ──
 ```
 
 Files:
-- `frontend/index.html` — minimal shell, links to CSS and JS
-- `frontend/style.css` — dark theme, mobile-first
-- `frontend/app.js` — frontend logic, universal event rendering, slash command autocomplete
-- `frontend/agent-bridge.ts` — Bun server, serves files + WebSocket, adapter selection
-- `frontend/adapters/types.ts` — AgentAdapter interface (the contract)
-- `frontend/adapters/omp-rpc.ts` — OMP RPC adapter (streaming, tools, state, slash commands)
-- `frontend/adapters/claude-code.ts` — Anthropic SDK adapter
-- `frontend/adapters/codex.ts` — OpenAI SDK adapter
+- `frontend/index.html` — shell (gate, sidebar, chat, Agent Hub, footer)
+- `frontend/style.css` — dark theme, mobile-first, syntax highlighting colors
+- `frontend/markdown.js` — self-contained markdown renderer + 8-language highlighter
+- `frontend/app.js` — frontend logic (event contract documented in the header)
+- `frontend/agent-bridge.ts` — Bun server: files + WebSocket + session management + capability negotiation
+- `frontend/adapters/types.ts` — AgentAdapter interface, AgentEvent contract, AdapterCapabilities
+- `frontend/adapters/omp-rpc.ts` — OMP RPC adapter (reference implementation)
+- `frontend/adapters/claude-code.ts` — Anthropic SDK adapter (multi-turn history)
+- `frontend/adapters/codex.ts` — OpenAI SDK adapter (multi-turn history)
 - `frontend/adapters/opencode.ts` — opencode serve API adapter
-- `frontend/adapters/simple.ts` — universal subprocess fallback
+- `frontend/adapters/simple.ts` — universal subprocess fallback (line streaming)
 
-## Adapter capability matrix
+## Capability negotiation
 
-| Adapter | Streaming | Tools | Thinking | State/Model | Slash cmds |
-|---|---|---|---|---|---|
-| OMP RPC | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Claude Code | ✓ | ✓ | ✓ | basic | ✗ |
-| Codex | ✓ | ✓ | ✗ | basic | ✗ |
-| opencode | ✓ | ✗ | ✗ | basic | ✗ |
-| Simple | ✗ | ✗ | ✗ | ✗ | ✗ |
+Each adapter declares what it can do; the bridge sends
+`{type: "capabilities", adapter, caps, commands}` on connect and session
+switch; the frontend shows only those features.
+
+| Adapter | models | thinking | hub+transcripts | cost | commands | history |
+|---|---|---|---|---|---|---|
+| omp-rpc | ✓ | ✓ | ✓ | ✓ | 14 | ✓ (process) |
+| claude-code | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ (rolling 40) |
+| codex | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ (rolling 40) |
+| opencode | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ (server session) |
+| simple | ✗ | ✗ | ✗ | ✗ | ✗ | CLI-dependent |
+
+New adapter = implement the interface + declare caps. No frontend changes.
+
+## Feature set (per capability)
+
+- Streaming markdown with syntax highlighting (JS/TS/Python/Go/Rust/Bash/JSON/YAML)
+- Tool cards: parameters (JSON) + results, expandable
+- Thinking display, Agent Hub (⌥) with live subagent cards — status, tokens, cost, duration — and per-agent transcripts (▤)
+- `/model` picker (typing `/model` opens it instantly; cost/context/current mark; cached list)
+- `/thinking` picker (levels from model state)
+- Footer: model, context usage, cumulative session cost
+- 2-level cascade autocomplete (parent → subcommands; hides during arguments)
+- Sessions: sidebar, independent agent per session, auto-title, refresh reattaches to the latest session
+- Agent error cards — token-less/crash guidance from the agent's own stderr
+- Stop button, prompt watchdog for silently-swallowed commands
 
 ## Hard rules
 
@@ -74,7 +94,10 @@ bun agent-bridge.ts --agent opencode --port 7683  # opencode serve
 bun agent-bridge.ts --agent gemini --port 7683    # subprocess fallback
 ```
 
-Each client connection gets its own auto-created session with an independent agent process. Sessions are listed in a sidebar (☰ toggle); users can create new ones, switch between them (loading history), and delete them. Session titles auto-populate from the first prompt (first 40 chars). Slash commands (`/model`, `/compact`, etc.) apply to the active session only. Multiple clients on the same session share context; each client's own session is private.
+Sessions: each connection reattaches to the most recent session (page
+refresh keeps the conversation); ＋ New Chat in the sidebar creates a
+fresh one with an independent agent process. Titles auto-populate from
+the first prompt. Slash commands apply to the active session only.
 
 ### 3. Gate + publish
 
@@ -96,12 +119,14 @@ portal expose 127.0.0.1:8080 --name <hard-to-guess-name> --hide
 ### 4. Verify
 
 - No credentials → `401`
-- With credentials → the chat UI loads (dark theme, input box, connection dot green)
-- Type `/` in the input → command autocomplete appears
-- Send a prompt → streaming markdown with syntax-highlighted code blocks and rich tool cards
-- Bare `/model` → clickable model picker (25+ models with cost/context); pick updates the footer
-- Bare `/thinking` → level picker; footer shows model, context usage, and session cost
-- Spawn a subagent → ⌥ button appears; opens the Agent Hub with live progress
+- With credentials → the chat UI loads; the header names the active adapter
+- Type `/` → autocomplete (top-level commands; `/goal ` → subcommands)
+- Send a prompt → streaming markdown with highlighted code and tool cards
+- Type `/model` → picker opens without Send; pick updates the footer + echoes
+- Type `/thinking` → level picker with the current level marked
+- Footer shows model, context, and session cost (grows each turn)
+- Spawn a subagent → ⌥ button; open the hub → cards; ▤ transcript renders the subagent's messages
+- Refresh the page → the latest session restores with history
 - Agent with no API token → red error card with the agent's own guidance
 
 ### 5. Hand off
@@ -111,6 +136,7 @@ Report: the public URL, credentials, which agent adapter is active, and the stop
 ## Failure rules
 
 - Bridge not reachable locally: check Bun is installed and the port is free.
-- WebSocket connects but no response: check the agent process spawned.
+- WebSocket connects but no response: check the agent process spawned; a red error card means the agent died (missing API key) — read its guidance.
 - Public URL loads but WebSocket fails: verify the gate or relay forwards WebSocket upgrades.
-- `/` autocomplete doesn't show: the input must start with `/` and contain no spaces.
+- `/` autocomplete doesn't show: commands come from the active adapter — non-OMP adapters intentionally have none.
+- Pickers don't open on `/model`: the active adapter didn't declare `models` capability.
