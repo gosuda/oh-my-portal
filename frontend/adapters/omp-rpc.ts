@@ -12,6 +12,7 @@ export class OmpRpcAdapter implements AgentAdapter {
   private stderrBuf = "";
   private callback: ((e: AgentEvent) => void) | null = null;
   private command: string;
+  private sessionCost = 0;
 
   constructor(command?: string) {
     this.command = command ?? "omp";
@@ -139,6 +140,16 @@ export class OmpRpcAdapter implements AgentAdapter {
         break;
       }
 
+      case "message_end": {
+        const msg = (m as { message?: { role?: string; usage?: { cost?: { total?: number } } } }).message;
+        const cost = msg?.usage?.cost?.total;
+        if (msg?.role === "assistant" && typeof cost === "number" && cost > 0) {
+          this.sessionCost += cost;
+          this.emit({ type: "cost_update", cost: this.sessionCost } as AgentEvent);
+        }
+        break;
+      }
+
       case "tool_execution_start":
         this.emit({ type: "tool_start", name: m.toolName || "tool", params: (m as { input?: Record<string, unknown> }).input || {} });
         break;
@@ -182,11 +193,17 @@ export class OmpRpcAdapter implements AgentAdapter {
           }
         } else if (m.command === "get_state" && m.success) {
           const d = m.data as {
-            model?: { provider: string; id: string };
+            model?: { provider: string; id: string; thinking?: { efforts?: string[] } };
             contextUsage?: { tokens: number; contextWindow: number; percent: number };
+            thinkingLevel?: string;
           } | undefined;
           if (d) {
-            this.emit({ type: "state_update", model: d.model, contextUsage: d.contextUsage });
+            this.emit({
+              type: "state_update",
+              model: d.model,
+              contextUsage: d.contextUsage,
+              thinkingLevel: d.thinkingLevel,
+            } as AgentEvent);
           }
         } else if (m.command === "get_available_models" && m.success) {
           const d = m.data as { models?: Array<{ provider: string; id: string }> } | undefined;

@@ -16,6 +16,7 @@ export interface AgentEvent {
     | "command_output"
     | "model_list"
     | "subagent_update"
+    | "cost_update"
     | "prompt_error"
     | "notice";
   content?: string;
@@ -23,12 +24,11 @@ export interface AgentEvent {
   params?: Record<string, unknown>;
   result?: string;
   from?: string;
-  model?: { provider: string; id: string };
-  contextUsage?: { tokens: number; contextWindow: number; percent: number };
+  model?: { provider: string; id: string; thinking?: { efforts?: string[] } };
+  thinkingLevel?: string;
   models?: Array<{ provider: string; id: string }>;
   subagents?: SubagentProgress[];
-  error?: string;
-  code?: number;
+  cost?: number;
 }
 
 export interface SubagentProgress {

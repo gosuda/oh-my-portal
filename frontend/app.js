@@ -31,7 +31,7 @@ function saveNick(v) {
 }
 
 let promptWatchdog = null;
-
+let lastState = null;
 // ── Password gate ─────────────────────────────────────────────────────
 function unlock() {
   const el = document.getElementById('gateInput');
@@ -280,6 +280,50 @@ function renderModelPicker(models) {
           nickname: nick,
         }));
         el.remove();
+        localEcho(`model → ${m.provider}/${m.id}`);
+      }
+    };
+    list.appendChild(item);
+  }
+  el.appendChild(list);
+  chat.appendChild(el);
+  scrollBottom();
+}
+
+function localEcho(text) {
+  agentEl = null; textEl = null; thinkEl = null; pendingMd = '';
+  const el = document.createElement('div');
+  el.className = 'msg system echo';
+  el.innerHTML = `<div class="sys-label">→</div>${esc(text)}`;
+  chat.appendChild(el);
+  scrollBottom();
+}
+
+function renderThinkingPicker() {
+  const efforts = lastState?.model?.thinking?.efforts || ['off', 'low', 'medium', 'high'];
+  const options = ['off', ...efforts.filter(e => e !== 'off')];
+  const current = lastState?.thinkingLevel;
+  agentEl = null; textEl = null; thinkEl = null; pendingMd = '';
+  const el = document.createElement('div');
+  el.className = 'msg model-picker';
+  el.innerHTML = `<div class="sys-label">select thinking level</div>`;
+  const list = document.createElement('div');
+  list.className = 'model-list';
+  for (const lvl of options) {
+    const isCurrent = lvl === current;
+    const item = document.createElement('button');
+    item.className = 'model-item' + (isCurrent ? ' current' : '');
+    item.innerHTML = `<span class="mi-id">${esc(lvl)}</span>${isCurrent ? '<span class="mi-check">✓</span>' : ''}`;
+    item.onclick = () => {
+      if (ws && ws.readyState === 1 && activeSessionId) {
+        ws.send(JSON.stringify({
+          type: 'prompt',
+          message: `/thinking ${lvl}`,
+          sessionId: activeSessionId,
+          nickname: nick,
+        }));
+        el.remove();
+        localEcho(`thinking → ${lvl}`);
       }
     };
     list.appendChild(item);
@@ -390,6 +434,7 @@ function handleEvent(msg) {
       setStream(false);
       break;
     case 'state_update': {
+      lastState = msg;
       const s = document.getElementById('status');
       const m = document.getElementById('model');
       const c = document.getElementById('ctx');
@@ -398,6 +443,13 @@ function handleEvent(msg) {
       if (msg.contextUsage && c) {
         const u = msg.contextUsage;
         c.textContent = (u.tokens / 1000).toFixed(0) + 'k/' + (u.contextWindow / 1000).toFixed(0) + 'k (' + u.percent.toFixed(1) + '%)';
+      }
+      break;
+    }
+    case 'cost_update': {
+      const el = document.getElementById('cost');
+      if (el && typeof msg.cost === 'number') {
+        el.textContent = '$' + msg.cost.toFixed(4);
       }
       break;
     }
@@ -455,6 +507,10 @@ function send() {
   // Bare /model → request model list for picker
   if (t === '/model') {
     ws.send(JSON.stringify({ type: 'get_models', sessionId: activeSessionId }));
+  }
+  // Bare /thinking → level picker from last known state
+  if (t === '/thinking') {
+    renderThinkingPicker();
   }
 }
 
