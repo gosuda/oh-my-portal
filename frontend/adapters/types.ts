@@ -13,6 +13,8 @@ export interface AgentEvent {
     | "agent_ready"
     | "agent_exited"
     | "agent_error"
+    | "prompt_accepted"
+    | "command_result"
     | "state_update"
     | "command_output"
     | "model_list"
