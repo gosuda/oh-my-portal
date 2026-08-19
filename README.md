@@ -22,9 +22,14 @@ Share a live OMP session through OMP collab:
 
 Only the host human mints collab links; the agent prepares infrastructure and never fabricates or logs them.
 
+### agent-web (universal)
+
+Publish an agent's native web UI — `opencode serve` (verified end to end: loopback default, full web UI at `/`, **no built-in auth**) or self-hosted community UIs for Claude Code / Codex / Gemini — behind a mandatory authentication gate (caddy basicauth recipe included) and through a Portal tunnel. The skill encodes the verified failure mode: local-first UIs usually answer unauthenticated, so the gate is a hard rule, and verification requires `401` without credentials before hand-off.
+
 ### Planned
 
-`agent-web` — recipes for agents with native web UIs (`opencode serve`, community Claude Code / Codex UIs): plain port exposure through Portal, per-agent safe-launch notes.
+- `agent-notify` — agent hooks (Claude Code notification hooks, OMP hooks) pushing to a self-hosted ntfy exposed through Portal.
+- `mcp-share` — expose local MCP servers (stdio→HTTP bridge) through Portal so other machines' agents can use your tools.
 
 ## Install
 
