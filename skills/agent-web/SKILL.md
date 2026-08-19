@@ -50,7 +50,7 @@ caddy hash-password --plaintext '<long random password>'   # → $2a$...
 caddy run --config Caddyfile
 ```
 
-If the host already runs a reverse proxy (nginx, the #296 topology), add the gate there instead of a second proxy. WebSocket/SSE pass through both Caddy and Portal tunnels without special config — verify the final handshake rather than re-litigating.
+If the host already runs a reverse proxy (nginx in front of shared sites, for example), add the gate there instead of a second proxy. WebSocket/SSE pass through both Caddy and Portal tunnels without special config — verify the final handshake rather than re-litigating.
 
 ### 3. Publish through Portal
 
