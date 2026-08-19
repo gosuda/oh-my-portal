@@ -26,10 +26,17 @@ Only the host human mints collab links; the agent prepares infrastructure and ne
 
 Publish an agent's native web UI — `opencode serve` (verified end to end: loopback default, full web UI at `/`, **no built-in auth**) or self-hosted community UIs for Claude Code / Codex / Gemini — behind a mandatory authentication gate (caddy basic_auth recipe included) and through a Portal tunnel. The skill encodes the verified failure mode: local-first UIs usually answer unauthenticated, so the gate is a hard rule, and verification requires `401` without credentials before hand-off.
 
-### Planned
+### agent-share (universal)
 
-- `agent-notify` — agent hooks (Claude Code notification hooks, OMP hooks) pushing to a self-hosted ntfy exposed through Portal.
-- `mcp-share` — expose local MCP servers (stdio→HTTP bridge) through Portal so other machines' agents can use your tools.
+One persistent Portal tunnel = one stable HTTPS domain, guarded by per-person tokens (caddy `basic_auth`, one bcrypt hash per person). Inviting is minting a token; removal is deleting a line plus a graceful reload — verified to revoke instantly while other members stay connected without a drop.
+
+### agent-notify (universal)
+
+Agent hooks (Claude Code notification hooks, OMP hooks) push to a self-hosted ntfy server exposed through a hidden Portal tunnel. Verified end to end on ntfy 2.27: `403` anonymous, token publish and SSE subscribe locally and through the public URL. Notification content is labels-only.
+
+### mcp-share (universal)
+
+Expose a local stdio MCP server to other machines' agents: a supergateway bridge (streamable HTTP, stateless `/mcp`) behind the auth gate, published through a hidden tunnel. Verified with `initialize` → `tools/list` → `tools/call` all round-tripping through the public URL. The bridge has no built-in auth, so the gate is mandatory; the skill makes the tool-execution grant explicit.
 
 ## Install
 
