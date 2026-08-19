@@ -1,16 +1,18 @@
 {
   "name": "oh-my-portal",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Portal access skills for every CLI agent - reach terminal-based agents, native web UIs, and shared sessions from anywhere through trustless tunnels.",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gosuda/oh-my-portal.git"
   },
-  "keywords": ["omp", "oh-my-pi", "portal", "collab", "tunnel", "remote"],
+  "keywords": ["cli-agent", "remote-access", "phone", "mobile", "claude-code", "codex", "gemini-cli", "opencode", "oh-my-pi", "mcp", "tmux", "tunnel", "portal", "self-hosted"],
   "files": [
     "omp/",
     ".omp-plugin/marketplace.json",
+    ".cursor-plugin/marketplace.json",
+    ".agents/plugins/marketplace.json",
     ".claude-plugin/marketplace.json",
     ".claude-plugin/plugin.json",
     "skills/",

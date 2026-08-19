@@ -1,0 +1,32 @@
+{
+  "name": "oh-my-portal",
+  "interface": {
+    "displayName": "Oh My Portal"
+  },
+  "plugins": [
+    {
+      "name": "oh-my-portal",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    },
+    {
+      "name": "oh-my-omp",
+      "source": {
+        "source": "local",
+        "path": "./omp"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

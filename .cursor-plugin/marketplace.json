@@ -4,13 +4,13 @@
     "name": "gosuda"
   },
   "metadata": {
-    "description": "Portal access skills for every CLI agent - terminal sharing, native web UIs, and session sharing.",
+    "description": "Portal access skills for every CLI agent - terminal sharing, native web UIs, and session sharing through trustless tunnels.",
     "version": "0.5.1"
   },
   "plugins": [
     {
       "name": "oh-my-portal",
-      "description": "Universal CLI agent access: reach any terminal-based agent (Claude Code, Codex CLI, Gemini CLI, OMP, opencode, ...) from a phone over a terminal or the agent's native web UI, published behind a Portal tunnel.",
+      "description": "Universal CLI agent access: reach any terminal-based agent from a phone over a terminal or the agent's native web UI, published behind a Portal tunnel.",
       "source": "./",
       "version": "0.5.1",
       "author": {
@@ -19,7 +19,7 @@
       "homepage": "https://github.com/gosuda/oh-my-portal",
       "repository": "https://github.com/gosuda/oh-my-portal",
       "license": "MIT",
-      "keywords": ["portal", "tunnel", "agent", "remote", "phone", "tmux"],
+      "keywords": ["portal", "tunnel", "agent", "remote", "phone", "tmux", "mcp", "cli"],
       "category": "productivity"
     },
     {
