@@ -31,6 +31,14 @@ function assert(cond: unknown, msg: string): true {
 const checks: Check[] = [];
 function check(name: string, run: Check["run"]) { checks.push({ name, run }); }
 
+// The bridge runs the same shared module at boot — this exercises it in
+// the suite too, covering checks defined there (e.g. css integrity).
+check("static: shared contract module (bridge boot gate)", async () => {
+  const { runStaticChecks } = await import("../contract");
+  const r = runStaticChecks();
+  assert(r.failed.length === 0, r.failed.map(f => `${f.name}: ${f.error}`).join("; "));
+  return true;
+});
 // C0: every shipped script must parse. A duplicate declaration killed
 // the whole frontend (gate included) — catch it before anything else.
 check("syntax: all frontend scripts parse", async () => {
