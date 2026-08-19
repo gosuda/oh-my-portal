@@ -14,11 +14,11 @@ export interface AgentEvent {
     | "state_update"
     | "command_output"
     | "command_result"
-    | "prompt_accepted"
     | "prompt_error"
     | "notice";
   content?: string;
   name?: string;
+  params?: Record<string, unknown>;
   result?: string;
   from?: string;
   model?: { provider: string; id: string };

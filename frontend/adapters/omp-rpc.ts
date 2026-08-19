@@ -118,7 +118,7 @@ export class OmpRpcAdapter implements AgentAdapter {
       }
 
       case "tool_execution_start":
-        this.emit({ type: "tool_start", name: m.toolName || "tool" });
+        this.emit({ type: "tool_start", name: m.toolName || "tool", params: m.input || {} });
         break;
 
       case "tool_execution_end":

@@ -136,9 +136,12 @@ function agentBubble() {
   scrollBottom();
 }
 
+let pendingMd = '';
 function renderText(d) {
   agentBubble();
-  textEl.textContent += d;
+  pendingMd += d;
+  // Render markdown on each delta (cheap for small texts)
+  textEl.innerHTML = md(pendingMd);
   scrollBottom();
 }
 
@@ -152,12 +155,18 @@ function renderThinking(d) {
   thinkEl.textContent += d;
 }
 
-function renderToolCard(name) {
-  agentEl = null; textEl = null; thinkEl = null;
+function renderToolCard(name, params) {
+  agentEl = null; textEl = null; thinkEl = null; pendingMd = '';
   const c = document.createElement('div');
   c.className = 'tool';
   c.dataset.name = name;
-  c.innerHTML = `<div class="hd"><span class="icon">⚙</span><span class="name">${esc(name)}</span><span class="st">…</span></div><div class="bd"><pre></pre></div>`;
+  const paramsStr = params ? JSON.stringify(params, null, 2) : '';
+  c.innerHTML = `
+    <div class="hd"><span class="icon">⚙</span><span class="name">${esc(name)}</span><span class="st">running…</span></div>
+    <div class="bd">
+      ${paramsStr ? `<div class="tool-params"><span class="lbl">params</span><pre>${esc(paramsStr)}</pre></div>` : ''}
+      <div class="tool-result"><span class="lbl">result</span><pre>waiting…</pre></div>
+    </div>`;
   c.querySelector('.hd').onclick = () => c.classList.toggle('open');
   chat.appendChild(c);
   scrollBottom();
@@ -201,7 +210,7 @@ function handleEvent(msg) {
       const cards = chat.querySelectorAll('.tool');
       const last = cards[cards.length - 1];
       if (!last || last.dataset.name !== msg.name) {
-        renderToolCard(msg.name || 'tool');
+        renderToolCard(msg.name || 'tool', msg.params);
       }
       break;
     }
@@ -209,8 +218,20 @@ function handleEvent(msg) {
       const cards = chat.querySelectorAll('.tool');
       const last = cards[cards.length - 1];
       if (last) {
-        last.querySelector('.st').textContent = 'done';
-        if (msg.result) last.querySelector('.bd pre').textContent = msg.result;
+        last.querySelector('.st').textContent = '✓';
+        last.querySelector('.st').classList.add('done');
+        const resultEl = last.querySelector('.tool-result pre');
+        if (resultEl && msg.result) {
+          // Render as markdown if it looks like text, plain otherwise
+          const r = msg.result;
+          if (r.length < 2000 && (r.includes('\n') || r.includes('`') || r.includes('**'))) {
+            resultEl.innerHTML = md(r);
+          } else {
+            resultEl.textContent = r.slice(0, 2000);
+          }
+        } else if (resultEl) {
+          resultEl.textContent = '(no output)';
+        }
       }
       break;
     }
