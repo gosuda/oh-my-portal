@@ -39,7 +39,7 @@ caddy hash-password --plaintext '<long random password>'   # → $2a$...
 
 ```
 :8080 {
-    basicauth {
+    basic_auth {
         user <bcrypt hash>
     }
     reverse_proxy 127.0.0.1:4096
