@@ -40,6 +40,7 @@ const ctxEl = document.getElementById('ctx');
 const costEl = document.getElementById('cost');
 const sidebar = document.getElementById('sidebar');
 const sidebarOverlay = document.getElementById('sidebar-overlay');
+const gateEl = document.getElementById('gate');
 const gateInput = document.getElementById('gateInput');
 const nickInput = document.getElementById('nickInput');
 const cmdList = document.getElementById('cmdList');
