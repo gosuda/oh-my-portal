@@ -244,50 +244,82 @@ function renderCmdOutput(text) {
   scrollBottom();
 }
 
-function renderModelPicker(models) {
-  if (!models.length) return;
+// ── Pickers (dropdown above input, same form as command autocomplete) ──
+
+const pickerEl = document.createElement('div');
+pickerEl.id = 'picker';
+pickerEl.className = 'picker-list';
+document.querySelector('footer').appendChild(pickerEl);
+
+function hidePicker() { pickerEl.classList.remove('visible'); pickerEl.innerHTML = ''; }
+
+function showPicker(title, items, onPick) {
+  if (!items.length) return;
   agentEl = null; textEl = null; thinkEl = null; pendingMd = '';
-
-  // Get current model from status
-  const currentModel = (document.getElementById('model')?.textContent || '').trim();
-
-  const el = document.createElement('div');
-  el.className = 'msg model-picker';
-  el.innerHTML = `<div class="sys-label">select a model</div>`;
-
+  hideAutocomplete();
+  pickerEl.innerHTML = `<div class="picker-title">${esc(title)}</div>`;
   const list = document.createElement('div');
   list.className = 'model-list';
-  for (const m of models) {
+  for (const it of items) {
+    const item = document.createElement('button');
+    item.className = 'model-item' + (it.current ? ' current' : '');
+    item.innerHTML = it.html;
+    item.onclick = () => { hidePicker(); onPick(it.value); };
+    list.appendChild(item);
+  }
+  pickerEl.appendChild(list);
+  pickerEl.classList.add('visible');
+}
+
+document.addEventListener('click', (e) => {
+  // Send/Stop clicks open pickers themselves — don't treat as outside-clicks
+  if (e.target.closest('#sendBtn, #stopBtn')) return;
+  if (pickerEl.classList.contains('visible') && !pickerEl.contains(e.target)) hidePicker();
+});
+
+function renderModelPicker(models) {
+  if (!models.length) return;
+  const currentModel = (document.getElementById('model')?.textContent || '').trim();
+  const items = models.map(m => {
     const full = m.provider + '/' + m.id;
     const isCurrent = full === currentModel;
     const cost = m.cost ? `$${m.cost.input}/$${m.cost.output}` : '';
     const ctx = m.contextWindow ? `${Math.round(m.contextWindow / 1024)}k` : '';
-    const item = document.createElement('button');
-    item.className = 'model-item' + (isCurrent ? ' current' : '');
-    item.innerHTML = `
-      <span class="mi-provider">${esc(m.provider)}</span>
-      <span class="mi-id">${esc(m.name || m.id)}</span>
-      ${ctx ? `<span class="mi-ctx">${ctx}</span>` : ''}
-      ${cost ? `<span class="mi-cost">${cost}</span>` : ''}
-      ${m.reasoning ? '<span class="mi-badge">R</span>' : ''}
-      ${isCurrent ? '<span class="mi-check">✓</span>' : ''}`;
-    item.onclick = () => {
-      if (ws && ws.readyState === 1 && activeSessionId) {
-        ws.send(JSON.stringify({
-          type: 'prompt',
-          message: `/model ${m.provider}/${m.id}`,
-          sessionId: activeSessionId,
-          nickname: nick,
-        }));
-        el.remove();
-        localEcho(`model → ${m.provider}/${m.id}`);
-      }
+    return {
+      value: full,
+      current: isCurrent,
+      html: `
+        <span class="mi-provider">${esc(m.provider)}</span>
+        <span class="mi-id">${esc(m.name || m.id)}</span>
+        ${ctx ? `<span class="mi-ctx">${ctx}</span>` : ''}
+        ${cost ? `<span class="mi-cost">${cost}</span>` : ''}
+        ${m.reasoning ? '<span class="mi-badge">R</span>' : ''}
+        ${isCurrent ? '<span class="mi-check">✓</span>' : ''}`,
     };
-    list.appendChild(item);
-  }
-  el.appendChild(list);
-  chat.appendChild(el);
-  scrollBottom();
+  });
+  showPicker('select a model', items, (full) => {
+    if (ws && ws.readyState === 1 && activeSessionId) {
+      ws.send(JSON.stringify({ type: 'prompt', message: `/model ${full}`, sessionId: activeSessionId, nickname: nick }));
+      localEcho(`model → ${full}`);
+    }
+  });
+}
+
+function renderThinkingPicker() {
+  const efforts = lastState?.model?.thinking?.efforts || ['off', 'low', 'medium', 'high'];
+  const options = ['off', ...efforts.filter(e => e !== 'off')];
+  const current = lastState?.thinkingLevel;
+  const items = options.map(lvl => ({
+    value: lvl,
+    current: lvl === current,
+    html: `<span class="mi-id">${esc(lvl)}</span>${lvl === current ? '<span class="mi-check">✓</span>' : ''}`,
+  }));
+  showPicker('select thinking level', items, (lvl) => {
+    if (ws && ws.readyState === 1 && activeSessionId) {
+      ws.send(JSON.stringify({ type: 'prompt', message: `/thinking ${lvl}`, sessionId: activeSessionId, nickname: nick }));
+      localEcho(`thinking → ${lvl}`);
+    }
+  });
 }
 
 function localEcho(text) {
@@ -295,40 +327,6 @@ function localEcho(text) {
   const el = document.createElement('div');
   el.className = 'msg system echo';
   el.innerHTML = `<div class="sys-label">→</div>${esc(text)}`;
-  chat.appendChild(el);
-  scrollBottom();
-}
-
-function renderThinkingPicker() {
-  const efforts = lastState?.model?.thinking?.efforts || ['off', 'low', 'medium', 'high'];
-  const options = ['off', ...efforts.filter(e => e !== 'off')];
-  const current = lastState?.thinkingLevel;
-  agentEl = null; textEl = null; thinkEl = null; pendingMd = '';
-  const el = document.createElement('div');
-  el.className = 'msg model-picker';
-  el.innerHTML = `<div class="sys-label">select thinking level</div>`;
-  const list = document.createElement('div');
-  list.className = 'model-list';
-  for (const lvl of options) {
-    const isCurrent = lvl === current;
-    const item = document.createElement('button');
-    item.className = 'model-item' + (isCurrent ? ' current' : '');
-    item.innerHTML = `<span class="mi-id">${esc(lvl)}</span>${isCurrent ? '<span class="mi-check">✓</span>' : ''}`;
-    item.onclick = () => {
-      if (ws && ws.readyState === 1 && activeSessionId) {
-        ws.send(JSON.stringify({
-          type: 'prompt',
-          message: `/thinking ${lvl}`,
-          sessionId: activeSessionId,
-          nickname: nick,
-        }));
-        el.remove();
-        localEcho(`thinking → ${lvl}`);
-      }
-    };
-    list.appendChild(item);
-  }
-  el.appendChild(list);
   chat.appendChild(el);
   scrollBottom();
 }
@@ -542,6 +540,11 @@ const COMMANDS = [
 const cmdList = document.getElementById('cmdList');
 let cmdActiveIndex = -1;
 
+function hideAutocomplete() {
+  cmdList.classList.remove('visible');
+  cmdList.innerHTML = '';
+  cmdActiveIndex = -1;
+}
 function showCmds(text) {
   if (!text.startsWith('/') || text.includes(' ')) {
     cmdList.classList.remove('visible');

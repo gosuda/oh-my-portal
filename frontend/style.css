@@ -116,6 +116,12 @@ main::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 .mi-cost { color:var(--dim); font-size:11px; font-variant-numeric:tabular-nums; }
 .mi-badge { font-size:9px; color:var(--accent); border:1px solid var(--accent); border-radius:3px; padding:0 3px; line-height:14px; }
 
+/* Pickers — same anchored-dropdown form as command autocomplete */
+.picker-list { position:absolute; bottom:100%; left:12px; right:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius) var(--radius) 0 0; max-height:300px; overflow-y:auto; z-index:11; display:none; }
+.picker-list.visible { display:block; }
+.picker-title { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.8px; padding:8px 14px 6px; border-bottom:1px solid var(--border); }
+.picker-list .model-list { padding:6px 8px; }
+
 /* Agent errors (no token, crash, etc.) */
 .msg.agent-error { align-self:stretch; max-width:100%; background:rgba(244,67,54,.06); border:1px solid rgba(244,67,54,.4); border-radius:var(--radius); padding:10px 14px; }
 .err-label { font-size:10px; color:#ef5350; text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; font-weight:600; }
