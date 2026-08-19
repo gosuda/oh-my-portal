@@ -108,5 +108,19 @@ export function runStaticChecks(): { passed: CheckResult[]; failed: CheckResult[
     assert(missing.length === 0, `bridge has no route for: ${missing.join(", ")}`);
   });
 
+  // C8: stylesheet integrity — a font-stack edit once deleted the body
+  // rule entirely (white page). Body must be styled, and every var()
+  // reference must have a matching :root declaration.
+  run("css: body styled + every var() declared in :root", () => {
+    const css = file("style.css");
+    assert(/^body \{[^}]*background:/m.test(css), "body rule missing or has no background");
+    assert(/^body \{[^}]*font-family:/m.test(css), "body rule has no font-family");
+    const root = css.match(/^:root \{([\s\S]*?)\}/m)?.[1] ?? "";
+    const declared = new Set([...root.matchAll(/--([\w-]+)\s*:/g)].map(m => m[1]));
+    const used = new Set([...css.matchAll(/var\(--([\w-]+)\)/g)].map(m => m[1]));
+    const undeclared = [...used].filter(v => !declared.has(v));
+    assert(undeclared.length === 0, `var() without :root declaration: [${undeclared}]`);
+  });
+
   return { passed, failed };
 }
