@@ -1,23 +1,23 @@
 {
-  "name": "omp-portal",
+  "name": "oh-my-portal",
   "owner": {
     "name": "gosuda"
   },
   "metadata": {
     "description": "Oh My Pi plugins for Portal, the self-hostable tunnel network.",
-    "version": "0.1.1"
+    "version": "0.2.0"
   },
   "plugins": [
     {
-      "name": "omp-portal",
-      "description": "Share a live OMP session with a phone or remote browser through OMP collab, via the hosted relay or a self-hosted relay behind a Portal tunnel.",
+      "name": "oh-my-portal",
+      "description": "Portal access skills for OMP and every CLI agent - live session sharing, native web UIs, and terminal access with a phone or remote browser through OMP collab, via the hosted relay or a self-hosted relay behind a Portal tunnel.",
       "source": "./",
-      "version": "0.1.1",
+      "version": "0.2.0",
       "author": {
         "name": "gosuda"
       },
-      "homepage": "https://github.com/gosuda/omp-portal",
-      "repository": "https://github.com/gosuda/omp-portal",
+      "homepage": "https://github.com/gosuda/oh-my-portal",
+      "repository": "https://github.com/gosuda/oh-my-portal",
       "license": "MIT",
       "keywords": ["omp", "portal", "collab", "tunnel", "remote", "phone"],
       "category": "productivity"

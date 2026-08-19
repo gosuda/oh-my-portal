@@ -1,11 +1,11 @@
 {
-  "name": "omp-portal",
-  "version": "0.1.1",
+  "name": "oh-my-portal",
+  "version": "0.2.0",
   "description": "Oh My Pi plugin that shares a live OMP session with a phone or remote browser through OMP collab, optionally behind a self-hosted Portal relay.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gosuda/omp-portal.git"
+    "url": "git+https://github.com/gosuda/oh-my-portal.git"
   },
   "keywords": ["omp", "oh-my-pi", "portal", "collab", "tunnel", "remote"],
   "files": [
