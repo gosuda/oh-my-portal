@@ -34,10 +34,20 @@
         <div class="model" id="model"></div>
         <div id="ctx"></div>
       </div>
+      <button class="hub-btn" id="hubBtn" onclick="toggleHub()" style="display:none">⌥ <span id="hubCount"></span></button>
       <input class="nick" id="nickInput" placeholder="nick" maxlength="20" onchange="saveNick(this.value)">
     </header>
 
     <main id="chat"></main>
+
+    <div id="hub-overlay" onclick="toggleHub()"></div>
+    <div id="hub">
+      <div class="hub-head">
+        <span>Agent Hub</span>
+        <button class="hub-close" onclick="toggleHub()">×</button>
+      </div>
+      <div class="hub-list" id="hubList"></div>
+    </div>
 
     <footer>
       <div class="cmd-list" id="cmdList"></div>

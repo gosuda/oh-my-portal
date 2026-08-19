@@ -10,6 +10,11 @@ const sidebar = document.getElementById('sidebar');
 const sidebarOverlay = document.getElementById('sidebar-overlay');
 const sessionListEl = document.getElementById('sessionList');
 const chatTitle = document.getElementById('chatTitle');
+const hubBtn = document.getElementById('hubBtn');
+const hubCount = document.getElementById('hubCount');
+const hubEl = document.getElementById('hub');
+const hubOverlay = document.getElementById('hub-overlay');
+const hubList = document.getElementById('hubList');
 
 // ── State ─────────────────────────────────────────────────────────────
 let ws = null;
@@ -45,6 +50,52 @@ if (localStorage.getItem('chat-pass') === '1') {
 function toggleSidebar() {
   sidebar.classList.toggle('open');
   sidebarOverlay.classList.toggle('open');
+}
+
+// ── Agent Hub (subagent panel) ────────────────────────────────────────
+let hubAgents = [];
+
+function toggleHub() {
+  hubEl.classList.toggle('open');
+  hubOverlay.classList.toggle('open');
+}
+
+function renderHub() {
+  const running = hubAgents.filter(a => a.status === 'running' || a.status === 'pending').length;
+  hubBtn.style.display = hubAgents.length ? '' : 'none';
+  hubCount.textContent = hubAgents.length;
+  hubBtn.classList.toggle('active', running > 0);
+
+  if (!hubAgents.length) {
+    hubList.innerHTML = '<div class="hub-empty">no subagents</div>';
+    return;
+  }
+
+  hubList.innerHTML = '';
+  for (const a of hubAgents) {
+    const card = document.createElement('div');
+    card.className = 'hub-card st-' + (a.status || 'unknown');
+    const dur = a.durationMs ? Math.round(a.durationMs / 1000) + 's' : '';
+    const cost = a.cost ? '$' + a.cost.toFixed(4) : '';
+    const meta = [
+      a.toolCount ? a.toolCount + ' tools' : '',
+      a.tokens ? (a.tokens > 1000 ? (a.tokens / 1000).toFixed(1) + 'k' : a.tokens) + ' tok' : '',
+      dur, cost,
+    ].filter(Boolean).join(' · ');
+
+    card.innerHTML = `
+      <div class="hc-top">
+        <span class="hc-name">${esc(a.id)}</span>
+        <span class="hc-status">${esc(a.status)}</span>
+      </div>
+      <div class="hc-meta">
+        <span class="hc-agent">${esc(a.agent)}${a.modelRole ? ' · ' + esc(a.modelRole) : ''}</span>
+        <span class="hc-stats">${meta}</span>
+      </div>
+      ${a.recentOutput && a.recentOutput.length ? `<div class="hc-out">${esc(a.recentOutput[a.recentOutput.length - 1]).slice(0, 200)}</div>` : ''}
+    `;
+    hubList.appendChild(card);
+  }
 }
 
 function newSession() {
@@ -277,7 +328,6 @@ function handleEvent(msg) {
         last.querySelector('.st').classList.add('done');
         const resultEl = last.querySelector('.tool-result pre');
         if (resultEl && msg.result) {
-          // Render as markdown if it looks like text, plain otherwise
           const r = msg.result;
           if (r.length < 2000 && (r.includes('\n') || r.includes('`') || r.includes('**'))) {
             resultEl.innerHTML = md(r);
@@ -314,6 +364,10 @@ function handleEvent(msg) {
       renderModelPicker(msg.models || []);
       break;
     }
+    case 'subagent_update':
+      hubAgents = msg.subagents || [];
+      renderHub();
+      break;
     case 'agent_error': {
       agentEl = null; textEl = null; thinkEl = null; pendingMd = '';
       const el = document.createElement('div');

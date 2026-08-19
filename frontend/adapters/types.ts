@@ -14,11 +14,10 @@ export interface AgentEvent {
     | "agent_error"
     | "state_update"
     | "command_output"
-    | "command_result"
     | "model_list"
+    | "subagent_update"
     | "prompt_error"
     | "notice";
-  models?: Array<{ provider: string; id: string }>;
   content?: string;
   name?: string;
   params?: Record<string, unknown>;
@@ -26,8 +25,26 @@ export interface AgentEvent {
   from?: string;
   model?: { provider: string; id: string };
   contextUsage?: { tokens: number; contextWindow: number; percent: number };
+  models?: Array<{ provider: string; id: string }>;
+  subagents?: SubagentProgress[];
   error?: string;
   code?: number;
+}
+
+export interface SubagentProgress {
+  id: string;
+  agent: string;
+  agentSource?: string;
+  modelRole?: string;
+  status: string;
+  task?: string;
+  recentTools?: string[];
+  recentOutput?: string[];
+  toolCount?: number;
+  requests?: number;
+  tokens?: number;
+  cost?: number;
+  durationMs?: number;
 }
 
 export interface AgentAdapter {

@@ -1,7 +1,7 @@
 // OMP RPC adapter — bridges omp --mode rpc JSON-RPC to universal AgentEvents.
 // This is the reference adapter; others follow the same interface.
 
-import type { AgentAdapter, AgentEvent } from "./types";
+import type { AgentAdapter, AgentEvent, SubagentProgress } from "./types";
 import { spawn, type ChildProcess } from "child_process";
 
 export class OmpRpcAdapter implements AgentAdapter {
@@ -110,6 +110,7 @@ export class OmpRpcAdapter implements AgentAdapter {
       error?: string;
       toolName?: string;
       result?: { content?: unknown };
+      partialResult?: { details?: { progress?: unknown[] } };
     };
 
     switch (m.type) {
@@ -139,8 +140,17 @@ export class OmpRpcAdapter implements AgentAdapter {
       }
 
       case "tool_execution_start":
-        this.emit({ type: "tool_start", name: m.toolName || "tool", params: m.input || {} });
+        this.emit({ type: "tool_start", name: m.toolName || "tool", params: (m as { input?: Record<string, unknown> }).input || {} });
         break;
+
+      case "tool_execution_update": {
+        // The `task` tool streams subagent progress via partialResult.details.progress
+        const progress = m.partialResult?.details?.progress;
+        if (Array.isArray(progress) && progress.length > 0) {
+          this.emit({ type: "subagent_update", subagents: progress as SubagentProgress[] });
+        }
+        break;
+      }
 
       case "tool_execution_end":
         this.emit({
@@ -153,7 +163,7 @@ export class OmpRpcAdapter implements AgentAdapter {
       case "command_output":
         this.emit({
           type: "command_output",
-          content: (m.content as string) || (m.output as string) || "",
+          content: (m as { content?: string; output?: string }).content || (m as { output?: string }).output || "",
         });
         break;
 
