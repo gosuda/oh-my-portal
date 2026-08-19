@@ -1,16 +1,23 @@
 // OMP RPC adapter — bridges omp --mode rpc JSON-RPC to universal AgentEvents.
 // This is the reference adapter; others follow the same interface.
 
-import type { AgentAdapter, AgentEvent } from "./types";
+import type { AgentAdapter, AgentEvent, SubagentProgress, SubagentMessage, CommandDef } from "./types";
 import { spawn, type ChildProcess } from "child_process";
 
 export class OmpRpcAdapter implements AgentAdapter {
   readonly name = "omp-rpc";
+  readonly capabilities = {
+    models: true, thinking: true, subagents: true,
+    transcripts: true, cost: true, commands: true, abort: true,
+  } as const;
   private proc: ChildProcess | null = null;
   private stdin: NodeJS.WritableStream | null = null;
-  private buffer = "";
+  private buffer: string;
+  private stderrBuf = "";
   private callback: ((e: AgentEvent) => void) | null = null;
   private command: string;
+  private sessionCost = 0;
+  private pendingTranscript = new Map<string, string>(); // reqId → subagentId
 
   constructor(command?: string) {
     this.command = command ?? "omp";
@@ -27,11 +34,27 @@ export class OmpRpcAdapter implements AgentAdapter {
       shell: true,
     });
     this.stdin = this.proc.stdin;
+    this.buffer = "";
+    this.stderrBuf = "";
     this.proc.stdout!.on("data", (chunk: Buffer) => this.onStdout(chunk));
+    this.proc.stderr!.on("data", (chunk: Buffer) => {
+      this.stderrBuf += chunk.toString("utf-8");
+      // Cap to avoid unbounded growth on chatty stderr
+      if (this.stderrBuf.length > 8192) this.stderrBuf = this.stderrBuf.slice(-8192);
+    });
     this.proc.on("exit", (code) => {
+      const err = this.stderrBuf.trim();
       this.proc = null;
       this.stdin = null;
+      // Non-zero exit with stderr → surface the agent's own guidance
+      // (e.g. "No models available. Use /login or set an API key…")
+      if (code !== 0 && code !== null && err) {
+        this.emit({ type: "agent_error", error: err });
+      }
       this.emit({ type: "agent_exited", code: code ?? 0 });
+    });
+    this.proc.on("error", (e) => {
+      this.emit({ type: "agent_error", error: `failed to start agent: ${e.message}` });
     });
   }
 
@@ -45,6 +68,35 @@ export class OmpRpcAdapter implements AgentAdapter {
 
   pollState() {
     this.write({ id: `s-${Date.now()}`, type: "get_state" });
+  }
+
+  listModels() {
+    this.write({ id: `m-${Date.now()}`, type: "get_available_models" });
+  }
+  getSubagentMessages(subagentId: string, sessionFile: string, fromByte = 0) {
+    const id = `gm-${Date.now()}`;
+    this.pendingTranscript.set(id, subagentId);
+    this.write({ id, type: "get_subagent_messages", subagentId, sessionFile, fromByte });
+  }
+
+  // Slash-command autocomplete for the frontend (OMP's command set).
+  commands(): CommandDef[] {
+    return [
+      { cmd: "/model",       desc: "Show or switch the current model" },
+      { cmd: "/goal",        desc: "Toggle goal mode (persistent autonomous objective)" },
+      { cmd: "/goal set",    desc: "Set or replace the goal" },
+      { cmd: "/goal show",   desc: "Show current goal details" },
+      { cmd: "/goal pause",  desc: "Pause the current goal" },
+      { cmd: "/goal resume", desc: "Resume a paused goal" },
+      { cmd: "/goal drop",   desc: "Drop the current goal" },
+      { cmd: "/goal budget", desc: "Adjust the token budget (<N|off>)" },
+      { cmd: "/compact",     desc: "Compress the conversation context" },
+      { cmd: "/thinking",    desc: "Set thinking level (off/low/medium/high/max)" },
+      { cmd: "/help",        desc: "Show available commands" },
+      { cmd: "/dump",        desc: "Dump the full conversation" },
+      { cmd: "/export",      desc: "Export the conversation" },
+      { cmd: "/exit",        desc: "Leave the session" },
+    ];
   }
 
   stop() {
@@ -89,11 +141,14 @@ export class OmpRpcAdapter implements AgentAdapter {
       error?: string;
       toolName?: string;
       result?: { content?: unknown };
+      partialResult?: { details?: { progress?: unknown[] } };
     };
 
     switch (m.type) {
       case "ready":
         this.emit({ type: "agent_ready" });
+        // Stream subagent lifecycle/progress events (drives the Agent Hub).
+        this.write({ id: `sub-${Date.now()}`, type: "set_subagent_subscription", level: "progress" });
         setTimeout(() => this.pollState(), 300);
         break;
 
@@ -117,10 +172,59 @@ export class OmpRpcAdapter implements AgentAdapter {
         break;
       }
 
+      case "message_end": {
+        const msg = (m as { message?: { role?: string; usage?: { cost?: { total?: number } } } }).message;
+        const cost = msg?.usage?.cost?.total;
+        if (msg?.role === "assistant" && typeof cost === "number" && cost > 0) {
+          this.sessionCost += cost;
+          this.emit({ type: "cost_update", cost: this.sessionCost } as AgentEvent);
+        }
+        break;
+      }
+
       case "tool_execution_start":
-        this.emit({ type: "tool_start", name: m.toolName || "tool" });
+        this.emit({ type: "tool_start", name: m.toolName || "tool", params: (m as { input?: Record<string, unknown> }).input || {} });
         break;
 
+      case "tool_execution_update": {
+        // tool_execution_start carries no input — the real args arrive
+        // on the first update event. Forward them to fill the card.
+        const args = (m as { args?: Record<string, unknown> }).args;
+        if (args && Object.keys(args).length > 0) {
+          this.emit({ type: "tool_params", name: m.toolName || "tool", params: args });
+        }
+        // The `task` tool streams subagent progress via partialResult.details.progress
+        const progress = m.partialResult?.details?.progress;
+        if (Array.isArray(progress) && progress.length > 0) {
+          this.emit({ type: "subagent_update", subagents: progress as SubagentProgress[] });
+        }
+        break;
+      }
+
+      case "subagent_lifecycle": {
+        // payload: {id, agent, status, sessionFile, …}
+        const p = (m as { payload?: Record<string, unknown> }).payload;
+        if (p) {
+          this.emit({
+            type: "subagent_lifecycle",
+            subagentId: String(p.id ?? ""),
+            status: String(p.status ?? ""),
+            name: p.agent ? String(p.agent) : undefined,
+            sessionFile: p.sessionFile ? String(p.sessionFile) : undefined,
+          });
+        }
+        break;
+      }
+
+      case "subagent_progress": {
+        // payload.progress is one agent's progress entry (same shape as
+        // tool_execution_update items)
+        const p = (m as { payload?: { progress?: unknown } }).payload?.progress;
+        if (p && typeof p === "object") {
+          this.emit({ type: "subagent_update", subagents: [p as SubagentProgress] });
+        }
+        break;
+      }
       case "tool_execution_end":
         this.emit({
           type: "tool_end",
@@ -132,7 +236,7 @@ export class OmpRpcAdapter implements AgentAdapter {
       case "command_output":
         this.emit({
           type: "command_output",
-          content: (m.content as string) || (m.output as string) || "",
+          content: (m as { content?: string; output?: string }).content || (m as { output?: string }).output || "",
         });
         break;
 
@@ -143,17 +247,38 @@ export class OmpRpcAdapter implements AgentAdapter {
             const data = m.data as { agentInvoked?: boolean } | undefined;
             if (data?.agentInvoked === false) {
               this.emit({ type: "command_result" });
+              // Slash command may have changed model/compact state — refresh footer
+              this.pollState();
             }
           } else {
             this.emit({ type: "prompt_error", error: m.error || "prompt failed" });
           }
         } else if (m.command === "get_state" && m.success) {
           const d = m.data as {
-            model?: { provider: string; id: string };
+            model?: { provider: string; id: string; thinking?: { efforts?: string[] } };
             contextUsage?: { tokens: number; contextWindow: number; percent: number };
+            thinkingLevel?: string;
           } | undefined;
           if (d) {
-            this.emit({ type: "state_update", model: d.model, contextUsage: d.contextUsage });
+            this.emit({
+              type: "state_update",
+              model: d.model,
+              contextUsage: d.contextUsage,
+              thinkingLevel: d.thinkingLevel,
+            } as AgentEvent);
+          }
+        } else if (m.command === "get_subagent_messages" && m.success) {
+          const reqId = (m as { id?: string }).id;
+          const subagentId = reqId ? this.pendingTranscript.get(reqId) : undefined;
+          if (reqId) this.pendingTranscript.delete(reqId);
+          const d = m.data as { messages?: unknown[]; nextByte?: number } | undefined;
+          if (d?.messages) {
+            this.emit({
+              type: "subagent_transcript",
+              subagentId,
+              transcript: d.messages as SubagentMessage[],
+              nextByte: d.nextByte,
+            } as AgentEvent);
           }
         }
         break;
