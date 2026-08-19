@@ -5,9 +5,11 @@
 // Does NOT support: slash commands, compact.
 
 import type { AgentAdapter, AgentEvent } from "./types";
+import { NO_CAPS } from "./types";
 
 export class CodexAdapter implements AgentAdapter {
   readonly name = "codex";
+  readonly capabilities = { ...NO_CAPS }; // streaming + tool calls only
   private callback: ((e: AgentEvent) => void) | null = null;
   private controller: AbortController | null = null;
   private model: string;

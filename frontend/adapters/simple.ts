@@ -3,10 +3,11 @@
 // Use this as the universal fallback; upgrade to a native adapter when available.
 
 import type { AgentAdapter, AgentEvent } from "./types";
-import { spawn, type ChildProcess } from "child_process";
+import { NO_CAPS } from "./types";
 
 export class SimpleAdapter implements AgentAdapter {
   readonly name = "simple";
+  readonly capabilities = { ...NO_CAPS };
   private proc: ChildProcess | null = null;
   private callback: ((e: AgentEvent) => void) | null = null;
   private command: string;

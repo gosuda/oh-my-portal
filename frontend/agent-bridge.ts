@@ -90,6 +90,17 @@ function sendToSession(sessionId: string, event: AgentEvent): void {
   }
 }
 
+// Tell a client what the session's adapter can do — the frontend shows
+// only the features the active agent supports.
+function sendCapabilities(ws: ClientWebSocket, session: Session): void {
+  ws.send(JSON.stringify({
+    type: "capabilities",
+    adapter: session.adapter.name,
+    caps: session.adapter.capabilities,
+    commands: session.adapter.commands?.() ?? [],
+  }));
+}
+
 function broadcastAll(obj: Record<string, unknown>): void {
   const data = JSON.stringify(obj);
   for (const ws of clients) {
@@ -138,6 +149,7 @@ Bun.serve({
         .sort((a, b) => b.createdAt - a.createdAt)[0];
       const session = latest ?? createSession();
       ws.activeSession = session.id;
+      sendCapabilities(ws, session);
       ws.send(JSON.stringify({ type: "session_switched", sessionId: session.id }));
       if (latest) {
         ws.send(JSON.stringify({ type: "session_history", messages: session.messages }));
@@ -151,10 +163,10 @@ Bun.serve({
       try { msg = JSON.parse(message); } catch { return; }
 
       const type = msg.type as string;
-
       if (type === "new_session") {
         const session = createSession();
         ws.activeSession = session.id;
+        sendCapabilities(ws, session);
         ws.send(JSON.stringify({ type: "session_switched", sessionId: session.id }));
         broadcastAll({ type: "session_list", sessions: sessionList() });
       }
@@ -163,6 +175,7 @@ Bun.serve({
         const session = sessions.get(msg.sessionId);
         if (session) {
           ws.activeSession = session.id;
+          sendCapabilities(ws, session);
           ws.send(JSON.stringify({ type: "session_switched", sessionId: session.id }));
           ws.send(JSON.stringify({ type: "session_history", messages: session.messages }));
           session.adapter.pollState();

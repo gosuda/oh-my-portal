@@ -1,11 +1,15 @@
 // OMP RPC adapter — bridges omp --mode rpc JSON-RPC to universal AgentEvents.
 // This is the reference adapter; others follow the same interface.
 
-import type { AgentAdapter, AgentEvent, SubagentProgress, SubagentMessage } from "./types";
+import type { AgentAdapter, AgentEvent, SubagentProgress, SubagentMessage, CommandDef } from "./types";
 import { spawn, type ChildProcess } from "child_process";
 
 export class OmpRpcAdapter implements AgentAdapter {
   readonly name = "omp-rpc";
+  readonly capabilities = {
+    models: true, thinking: true, subagents: true,
+    transcripts: true, cost: true, commands: true, abort: true,
+  } as const;
   private proc: ChildProcess | null = null;
   private stdin: NodeJS.WritableStream | null = null;
   private buffer: string;
@@ -73,6 +77,26 @@ export class OmpRpcAdapter implements AgentAdapter {
     const id = `gm-${Date.now()}`;
     this.pendingTranscript.set(id, subagentId);
     this.write({ id, type: "get_subagent_messages", subagentId, sessionFile, fromByte });
+  }
+
+  // Slash-command autocomplete for the frontend (OMP's command set).
+  commands(): CommandDef[] {
+    return [
+      { cmd: "/model",       desc: "Show or switch the current model" },
+      { cmd: "/goal",        desc: "Toggle goal mode (persistent autonomous objective)" },
+      { cmd: "/goal set",    desc: "Set or replace the goal" },
+      { cmd: "/goal show",   desc: "Show current goal details" },
+      { cmd: "/goal pause",  desc: "Pause the current goal" },
+      { cmd: "/goal resume", desc: "Resume a paused goal" },
+      { cmd: "/goal drop",   desc: "Drop the current goal" },
+      { cmd: "/goal budget", desc: "Adjust the token budget (<N|off>)" },
+      { cmd: "/compact",     desc: "Compress the conversation context" },
+      { cmd: "/thinking",    desc: "Set thinking level (off/low/medium/high/max)" },
+      { cmd: "/help",        desc: "Show available commands" },
+      { cmd: "/dump",        desc: "Dump the full conversation" },
+      { cmd: "/export",      desc: "Export the conversation" },
+      { cmd: "/exit",        desc: "Leave the session" },
+    ];
   }
 
   stop() {

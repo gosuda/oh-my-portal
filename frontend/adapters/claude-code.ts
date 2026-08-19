@@ -5,9 +5,11 @@
 // Does NOT support: slash commands (SDK doesn't process them), compact.
 
 import type { AgentAdapter, AgentEvent } from "./types";
+import { NO_CAPS } from "./types";
 
 export class ClaudeCodeAdapter implements AgentAdapter {
   readonly name = "claude-code";
+  readonly capabilities = { ...NO_CAPS }; // streaming + tools only for now
   private callback: ((e: AgentEvent) => void) | null = null;
   private controller: AbortController | null = null;
   private model: string;

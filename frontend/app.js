@@ -27,21 +27,19 @@
 //   new_session / switch_session {sessionId} / delete_session {sessionId}
 //   prompt {sessionId, message, nickname} / abort / get_models {sessionId}
 
-// ── 1. DOM refs ──────────────────────────────────────────────────────
+const chatTitle = document.getElementById('chatTitle');
+const statusEl = document.getElementById('status');
 
 const chat = document.getElementById('chat');
 const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 const stopBtn = document.getElementById('stopBtn');
 const dot = document.getElementById('dot');
-const statusEl = document.getElementById('status');
 const modelEl = document.getElementById('model');
 const ctxEl = document.getElementById('ctx');
 const costEl = document.getElementById('cost');
 const sidebar = document.getElementById('sidebar');
 const sidebarOverlay = document.getElementById('sidebar-overlay');
-const sessionListEl = document.getElementById('sessionList');
-const gateEl = document.getElementById('gate');
 const gateInput = document.getElementById('gateInput');
 const nickInput = document.getElementById('nickInput');
 const cmdList = document.getElementById('cmdList');
@@ -60,6 +58,8 @@ let reconnectTimer = null;
 let promptWatchdog = null;
 let lastState = null;        // last state_update (model, thinkingLevel, …)
 let modelCache = null;       // last model_list payload
+let caps = { models: false, thinking: false, subagents: false, transcripts: false, cost: false, commands: false, abort: true };
+let COMMANDS = [];           // adapter-provided slash commands (via capabilities)
 let hubAgents = [];          // last subagent_update payload
 
 // In-flight assistant message being streamed.
@@ -464,6 +464,24 @@ function showPicker(title, items, onPick) {
   pickerEl.classList.add('visible');
 }
 
+function maybeShowPicker(value) {
+  const t = value.trim();
+  if (t === '/model' && caps.models) {
+    pickerMode = 'model';
+    if (modelCache) renderModelPicker(modelCache);
+    if (ws && ws.readyState === 1 && activeSessionId) {
+      ws.send(JSON.stringify({ type: 'get_models', sessionId: activeSessionId }));
+    }
+    return true;
+  }
+  if (t === '/thinking' && caps.thinking) {
+    pickerMode = 'thinking';
+    renderThinkingPicker();
+    return true;
+  }
+  return false;
+}
+
 // Send a slash command from a picker pick and echo it (R9, R10).
 function sendCommand(command, echo) {
   if (!ws || ws.readyState !== 1 || !activeSessionId) return;
@@ -509,22 +527,6 @@ function renderThinkingPicker() {
   });
 }
 
-// Typing a bare picker trigger opens its dropdown immediately — no Send.
-// Returns true when the value is a trigger (input handling stops there).
-function maybeShowPicker(value) {
-  const t = value.trim();
-  if (t !== '/model' && t !== '/thinking') return false;
-  pickerMode = t === '/model' ? 'model' : 'thinking';
-  if (pickerMode === 'model') {
-    if (modelCache) renderModelPicker(modelCache);
-    if (ws && ws.readyState === 1 && activeSessionId) {
-      ws.send(JSON.stringify({ type: 'get_models', sessionId: activeSessionId }));
-    }
-  } else {
-    renderThinkingPicker();
-  }
-  return true;
-}
 
 // Outside-click closes the picker. Send/Stop/autocomplete clicks are
 // exempt — they manage pickers (a fresh picker may open during the
@@ -540,22 +542,6 @@ document.addEventListener('click', (e) => {
 // filtered as you type. Once the subcommand itself is complete (a
 // space follows), you are typing arguments — the list hides.
 
-const COMMANDS = [
-  { cmd: '/model',       desc: 'Show or switch the current model' },
-  { cmd: '/goal',        desc: 'Toggle goal mode (persistent autonomous objective)' },
-  { cmd: '/goal set',    desc: 'Set or replace the goal' },
-  { cmd: '/goal show',   desc: 'Show current goal details' },
-  { cmd: '/goal pause',  desc: 'Pause the current goal' },
-  { cmd: '/goal resume', desc: 'Resume a paused goal' },
-  { cmd: '/goal drop',   desc: 'Drop the current goal' },
-  { cmd: '/goal budget', desc: 'Adjust the token budget (<N|off>)' },
-  { cmd: '/compact',     desc: 'Compress the conversation context' },
-  { cmd: '/thinking',    desc: 'Set thinking level (off/low/medium/high/max)' },
-  { cmd: '/help',        desc: 'Show available commands' },
-  { cmd: '/dump',        desc: 'Dump the full conversation' },
-  { cmd: '/export',      desc: 'Export the conversation' },
-  { cmd: '/exit',        desc: 'Leave the session' },
-];
 
 let cmdActiveIndex = -1;
 
@@ -632,6 +618,16 @@ function handleEvent(msg) {
       break;
     case 'session_history':
       loadHistory(msg.messages || []);
+      break;
+    // Feature negotiation — the adapter decides what the UI offers
+    case 'capabilities':
+      caps = { ...caps, ...(msg.caps || {}) };
+      COMMANDS = msg.commands || [];
+      hideAutocomplete();
+      hidePicker();
+      if (!caps.subagents) { hubBtn.style.display = 'none'; hubAgents = []; }
+      if (!caps.cost) costEl.textContent = '';
+      if (msg.adapter) chatTitle.textContent = 'Agent Chat · ' + msg.adapter;
       break;
 
     // Chat stream

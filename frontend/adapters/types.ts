@@ -59,9 +59,41 @@ export interface SubagentProgress {
   durationMs?: number;
 }
 
+// What an adapter can actually do. The bridge forwards this to the
+// frontend, which shows/hides features accordingly — OMP gets the full
+// UI, other agents get the parts they support.
+export interface AdapterCapabilities {
+  /** listModels() + model_list events → model picker */
+  models: boolean;
+  /** thinking-level control → /thinking picker */
+  thinking: boolean;
+  /** subagent progress events → Agent Hub */
+  subagents: boolean;
+  /** subagent transcript fetching → ▤ buttons */
+  transcripts: boolean;
+  /** cost_update events → cost footer */
+  cost: boolean;
+  /** adapter-provided slash-command autocomplete */
+  commands: boolean;
+  /** mid-turn interrupt */
+  abort: boolean;
+}
+
+export interface CommandDef {
+  cmd: string;
+  desc: string;
+}
+
+const NO_CAPS: AdapterCapabilities = {
+  models: false, thinking: false, subagents: false,
+  transcripts: false, cost: false, commands: false, abort: true,
+};
+export { NO_CAPS };
+
 export interface AgentAdapter {
   readonly name: string;
-  /** Start the agent process or connection. Called once on first client. */
+  /** Feature negotiation — what this adapter supports. */
+  readonly capabilities: AdapterCapabilities;
   start(): void;
   /** Send a prompt (or slash command) to the agent. */
   prompt(text: string): void;
@@ -69,8 +101,8 @@ export interface AgentAdapter {
   listModels?(): void;
   /** Fetch a subagent transcript (optional). */
   getSubagentMessages?(subagentId: string, sessionFile: string, fromByte?: number): void;
-  abort(): void;
-  /** Request current state (model, context usage). */
+  /** Adapter-specific slash commands for autocomplete (optional). */
+  commands?(): CommandDef[];
   pollState(): void;
   onEvent(callback: (event: AgentEvent) => void): void;
   /** Clean shutdown. */
