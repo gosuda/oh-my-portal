@@ -11,8 +11,9 @@
     --success: #3fb950; --error: #f85149; --warning: #d29922;
     --radius: 12px; --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
   }
-  * { margin:0; padding:0; box-sizing:border-box; }
-  body { background:var(--bg); color:var(--text); font-family:var(--font); height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
+  header .nick-input { background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; padding:4px 8px; width:80px; outline:none; }
+  header .nick-input:focus { border-color:var(--accent); }
+   header .dot { width:8px; height:8px; border-radius:50%; background:var(--error); transition:background .3s; }
 
   header { background:var(--surface); border-bottom:1px solid var(--border); padding:10px 16px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
   header .dot { width:8px; height:8px; border-radius:50%; background:var(--error); transition:background .3s; }
@@ -68,6 +69,7 @@
      <div class="model" id="modelName"></div>
      <div id="ctxInfo"></div>
    </div>
+  <input id="nickInput" class="nick-input" placeholder="nickname" maxlength="20" onchange="setNickname(this.value)">
 </header>
 
 <main id="chat"></main>
@@ -94,21 +96,28 @@ let streaming = false;
 let currentAssistantEl = null;
 let currentTextEl = null;
 let currentThinkingEl = null;
-let reconnectTimer = null;
+let nickname = localStorage.getItem('agent-nick') || 'anon-' + Math.random().toString(36).slice(2, 6);
+
 
 // ── Rendering ─────────────────────────────────────────────────────────
 
-function addUserMsg(text, isRemote) {
+function addUserMsg(text, sender) {
   currentAssistantEl = null; currentTextEl = null; currentThinkingEl = null;
   const el = document.createElement('div');
-  el.className = 'msg ' + (isRemote ? 'remote-user' : 'user');
-  if (isRemote) {
-    el.innerHTML = `<span style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">↳ asked by another participant</span>${esc(text)}`;
-  } else {
+  const isMine = sender === nickname;
+  el.className = 'msg ' + (isMine ? 'user' : 'remote-user');
+  if (isMine) {
     el.textContent = text;
+  } else {
+    el.innerHTML = `<span style="font-size:11px;color:var(--accent);display:block;margin-bottom:4px;">${esc(sender)}</span>${esc(text)}`;
   }
   chat.appendChild(el);
   chat.scrollTop = chat.scrollHeight;
+}
+
+function setNickname(nick) {
+  nickname = (nick || '').trim().slice(0, 20) || nickname;
+  localStorage.setItem('agent-nick', nickname);
 }
 
 function ensureAssistant() {
@@ -257,7 +266,7 @@ function handleEvent(msg) {
       var si = document.getElementById('statusInfo');
       var mn = document.getElementById('modelName');
     case 'user_message':
-      addUserMsg(msg.content || '', true);
+      addUserMsg(msg.content || '', msg.from || 'someone');
       break;
     case 'state_update':
       if (mn && msg.model) mn.textContent = msg.model.provider + '/' + msg.model.id;
@@ -276,8 +285,8 @@ function sendPrompt() {
   if (!text || !ws || ws.readyState !== 1) return;
   input.value = '';
   input.style.height = 'auto';
-  addUserMsg(text);
-  ws.send(JSON.stringify({ type: 'prompt', message: text }));
+  addUserMsg(text, nickname);
+  ws.send(JSON.stringify({ type: 'prompt', message: text, nickname: nickname }));
 }
 
 function sendAbort() {
@@ -310,6 +319,7 @@ function fmtParams(p) {
   try { return JSON.stringify(p, null, 2); } catch { return String(p); }
 }
 
+document.getElementById('nickInput').value = nickname;
 connect();
 </script>
 </body>

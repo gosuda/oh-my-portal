@@ -228,7 +228,7 @@ Bun.serve({
       try {
         const msg = JSON.parse(message as string);
         if (msg.type === "prompt") {
-          broadcast({ type: "user_message", content: msg.message });
+          broadcast({ type: "user_message", content: msg.message, from: msg.nickname || "anonymous" });
           sendToAgent({
             id: `prompt-${Date.now()}`,
             type: "prompt",
