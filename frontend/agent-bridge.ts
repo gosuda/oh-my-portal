@@ -127,14 +127,29 @@ const html = await Bun.file(new URL("./index.html", import.meta.url)).text();
 const css = await Bun.file(new URL("./style.css", import.meta.url)).text();
 const js = await Bun.file(new URL("./app.js", import.meta.url)).text();
 
+const GATE_PASSWORD = process.env.GATE_PASSWORD || "";
+const RUN_TOKEN = crypto.randomUUID();
 Bun.serve({
   port: PORT,
   hostname: "127.0.0.1",
   async fetch(req, server) {
-    // WebSocket upgrade first
-    if (server.upgrade(req)) return;
+    const url = new URL(req.url);
+    const path = url.pathname;
 
-    const path = new URL(req.url).pathname;
+    // Server-side gate: the password lives only in this process's env.
+    // POST /auth exchanges it for a per-run token; WS upgrades must
+    // carry that token when GATE_PASSWORD is set. No password
+    // configured → bridge is open (loopback/local use).
+    if (path === "/auth") {
+      const body = await req.json().catch(() => ({ password: "" }));
+      const ok = !GATE_PASSWORD || body.password === GATE_PASSWORD;
+      if (ok) return Response.json({ ok: true, token: RUN_TOKEN });
+      return Response.json({ ok: false }, { status: 401 });
+    }
+
+    // WebSocket upgrade — token attached as ?token=
+    if (server.upgrade(req, { data: { token: url.searchParams.get("token") } })) return;
+
     if (path === "/" || path === "/index.html") {
       return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
     }
@@ -152,9 +167,13 @@ Bun.serve({
 
   websocket: {
     open(ws: ClientWebSocket) {
+      // Gate: reject upgrades without the run token (close 1008 → the
+      // client shows the password prompt instead of reconnect-looping)
+      if (GATE_PASSWORD && ws.data?.token !== RUN_TOKEN) {
+        ws.close(1008, "unauthorized");
+        return;
+      }
       clients.add(ws);
-      ws.activeSession = null;
-      console.log(`[bridge] client connected (${clients.size})`);
 
       // Reconnect (page refresh) → reattach to the most recent session;
       // only create one when none exist.

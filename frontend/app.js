@@ -92,19 +92,35 @@ function saveNick(v) {
   localStorage.setItem('chat-nick', nick);
 }
 
-// ── 4. Password gate (R3) ────────────────────────────────────────────
+// ── 4. Password gate (R3) — server-side ─────────────────────────────
+// No password lives in this file: POST /auth exchanges it for a per-run
+// token which rides the WS URL. A 1008 close = token rejected → show
+// the gate again instead of reconnect-looping.
 
-function unlock() {
-  if (gateInput.value === '1234') {
-    gateEl.style.display = 'none';
-    localStorage.setItem('chat-pass', '1');
-    input.focus();
-  } else {
-    gateInput.value = '';
-    gateInput.placeholder = 'wrong';
+async function unlock() {
+  gateInput.disabled = true;
+  try {
+    const res = await fetch('/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: gateInput.value }),
+    });
+    const data = await res.json().catch(() => ({ ok: false }));
+    if (data.ok && data.token) {
+      localStorage.setItem('chat-token', data.token);
+      gateEl.style.display = 'none';
+      input.focus();
+      connect();
+    } else {
+      gateInput.value = '';
+      gateInput.placeholder = 'wrong';
+    }
+  } catch {
+    gateInput.placeholder = 'server unreachable';
+  } finally {
+    gateInput.disabled = false;
   }
 }
-if (localStorage.getItem('chat-pass') === '1') gateEl.style.display = 'none';
 
 // ── 5. Sidebar / sessions (R2) ───────────────────────────────────────
 
@@ -748,12 +764,14 @@ function handleEvent(msg) {
 
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(proto + '//' + location.host);
+  const token = localStorage.getItem('chat-token');
+  ws = new WebSocket(proto + '//' + location.host + (token ? '?token=' + encodeURIComponent(token) : ''));
 
   ws.onopen = () => {
     dot.classList.add('on');
     input.disabled = false;
     sendBtn.disabled = false;
+    gateEl.style.display = 'none';  // connected → authenticated (or no gate)
     clearTimeout(reconnectTimer);
     // The bridge reattaches refreshes to the latest session (R2); on a
     // first-ever connect it auto-creates one.
@@ -764,10 +782,17 @@ function connect() {
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = (e) => {
     dot.classList.remove('on');
     input.disabled = true;
     sendBtn.disabled = true;
+    if (e.code === 1008) {
+      // Token rejected — show the gate; no reconnect loop
+      localStorage.removeItem('chat-token');
+      gateEl.style.display = 'flex';
+      gateInput.focus();
+      return;
+    }
     reconnectTimer = setTimeout(connect, 2000);
   };
 
