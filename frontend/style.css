@@ -41,8 +41,7 @@ body { width:100%; background:var(--bg); color:var(--text); font-family:var(--fo
 .sb-item .sb-del { background:none; border:none; color:var(--dim); font-size:14px; cursor:pointer; padding:2px 4px; border-radius:4px; }
 .sb-item .sb-del:hover { color:var(--error); background:var(--surface); }
 .sb-item .sb-ren { background:none; border:none; color:var(--dim); font-size:12px; cursor:pointer; padding:2px 4px; border-radius:4px; }
-.model-item.active { border-color:var(--accent); background:rgba(88,166,255,.08); }
-.model-item .mi-id { flex:1; font-weight:500; }
+.sb-item .sb-ren:hover { color:var(--accent); background:var(--surface); }
 .sb-item .sb-title-input { flex:1; min-width:0; font-size:13px; background:var(--bg); border:1px solid var(--accent); border-radius:4px; color:var(--text); padding:2px 6px; outline:none; font-family:inherit; }
 
 /* Main app */
@@ -113,6 +112,7 @@ main::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 .model-list { display:flex; flex-direction:column; gap:4px; }
 .model-item { display:flex; align-items:center; gap:10px; text-align:left; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; }
 .model-item:hover { border-color:var(--accent); }
+.model-item.active { border-color:var(--accent); background:rgba(88,166,255,.08); }
 .model-item.current { border-color:var(--success); background:rgba(76,175,80,.08); }
 .mi-provider { color:var(--dim); font-size:11px; min-width:70px; }
 .mi-id { flex:1; font-weight:500; }
