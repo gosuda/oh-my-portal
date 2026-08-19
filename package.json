@@ -1,7 +1,7 @@
 {
   "name": "oh-my-portal",
-  "version": "0.4.1",
-  "description": "Oh My Pi plugin that shares a live OMP session with a phone or remote browser through OMP collab, optionally behind a self-hosted Portal relay.",
+  "version": "0.4.2",
+  "description": "Portal access skills for every CLI agent - reach terminal-based agents, native web UIs, and shared sessions from anywhere through trustless tunnels.",
   "license": "MIT",
   "repository": {
     "type": "git",

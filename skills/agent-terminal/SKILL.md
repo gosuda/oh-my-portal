@@ -1,6 +1,6 @@
 ---
 name: agent-terminal
-description: Reach any terminal-based AI agent session (OMP, Claude Code, Codex CLI, Gemini CLI, opencode, ...) from a phone or remote browser by running the agent inside tmux and publishing a terminal over the web through a Portal tunnel. Use when the user asks to access, watch, or drive their CLI agent remotely from another device. Do not use for OMP collab specifically (the oh-my-omp plugin covers it) or for exposing an ordinary web app.
+description: Reach any terminal-based AI agent session (Claude Code, Codex CLI, Gemini CLI, OMP, opencode, ...) from a phone or remote browser by running the agent inside tmux and publishing a terminal over the web through a Portal tunnel. Use when the user asks to access, watch, or drive their CLI agent remotely from another device. Do not use for OMP collab specifically (the oh-my-omp plugin covers it) or for exposing an ordinary web app.
 license: MIT
 ---
 

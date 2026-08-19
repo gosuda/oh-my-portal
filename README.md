@@ -1,6 +1,6 @@
 # Oh My Portal
 
-Portal access skills for every CLI agent — OMP, Claude Code, Codex CLI, Gemini CLI, opencode, or anything else that lives in a terminal. Reach your agent from a phone or remote browser through [Portal](https://github.com/gosuda/portal-tunnel), the trustless relay network: tenant TLS terminates on your machine, the relay only ever sees ciphertext.
+Portal access skills for every CLI agent — Claude Code, Codex CLI, Gemini CLI, opencode, OMP, or anything else that lives in a terminal. Reach your agent from a phone or remote browser through [Portal](https://github.com/gosuda/portal-tunnel), the trustless relay network: tenant TLS terminates on your machine, the relay only ever sees ciphertext.
 
 Two plugins ship from this repository:
 
