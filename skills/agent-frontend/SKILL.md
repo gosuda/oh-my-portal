@@ -57,9 +57,11 @@ Files:
 
 - `bun --version` (the bridge is a Bun script)
 - An agent available: `omp --version` for the default, or the relevant SDK/API key for other adapters
-- Frontend files at `<repo>/frontend/`
+## Shared session behavior
 
-### 2. Start the bridge
+Each client connection gets its own auto-created session with an independent agent process. Sessions are listed in a sidebar (☰ toggle); users can create new ones, switch between them (loading history), and delete them. Session titles auto-populate from the first prompt (first 40 chars). Slash commands (`/model`, `/compact`, etc.) apply to the active session only. Multiple clients on the same session share context; each client's own session is private.
+
+## Hard rules
 
 ```sh
 cd <repo>/frontend
