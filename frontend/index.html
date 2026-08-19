@@ -1,326 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Agent Frontend</title>
-<style>
-  :root {
-    --bg: #0d1117; --surface: #161b22; --border: #30363d;
-    --text: #e6edf3; --text-dim: #8b949e; --accent: #58a6ff;
-    --success: #3fb950; --error: #f85149; --warning: #d29922;
-    --radius: 12px; --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
-  }
-  header .nick-input { background:var(--bg); border:1px solid var(--border); border-radius:6px; color:var(--text); font-size:12px; padding:4px 8px; width:80px; outline:none; }
-  header .nick-input:focus { border-color:var(--accent); }
-   header .dot { width:8px; height:8px; border-radius:50%; background:var(--error); transition:background .3s; }
-
-  header { background:var(--surface); border-bottom:1px solid var(--border); padding:10px 16px; display:flex; align-items:center; gap:10px; flex-shrink:0; }
-  header .dot { width:8px; height:8px; border-radius:50%; background:var(--error); transition:background .3s; }
-  header .dot.on { background:var(--success); }
-  header h1 { font-size:14px; font-weight:600; color:var(--text-dim); flex:1; }
-  header .agent-name { font-size:12px; color:var(--accent); }
-   header .status-info { font-size:11px; color:var(--text-dim); text-align:right; line-height:1.4; }
-   header .status-info .model { color:var(--accent); font-weight:500; }
-
-  main { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
-  main::-webkit-scrollbar { width:6px; }
-  main::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
-
-  .msg { max-width:85%; line-height:1.6; font-size:14px; white-space:pre-wrap; word-break:break-word; }
-  .msg.user { align-self:flex-end; background:var(--accent); color:#fff; padding:10px 14px; border-radius:var(--radius) var(--radius) 4px var(--radius); }
-  .msg.remote-user { align-self:flex-start; background:var(--surface); border:1px solid var(--accent); padding:10px 14px; border-radius:var(--radius) var(--radius) var(--radius) 4px; color:var(--text); font-size:13px; }
-  .msg.assistant .thinking { color:var(--text-dim); font-style:italic; font-size:13px; margin-bottom:6px; }
-
-  .tool-card { align-self:flex-start; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:0; max-width:85%; overflow:hidden; }
-  .tool-card .tool-header { padding:8px 12px; display:flex; align-items:center; gap:8px; cursor:pointer; user-select:none; }
-  .tool-card .tool-header .tool-icon { font-size:14px; }
-  .tool-card .tool-header .tool-name { font-size:13px; font-weight:500; color:var(--accent); }
-  .tool-card .tool-header .tool-status { font-size:11px; color:var(--text-dim); margin-left:auto; }
-  .tool-card .tool-body { padding:8px 12px; border-top:1px solid var(--border); font-size:12px; max-height:200px; overflow:auto; display:none; }
-  .tool-card.expanded .tool-body { display:block; }
-  .tool-card .tool-body pre { font-family:var(--font); white-space:pre-wrap; color:var(--text-dim); }
-
-  .status-bar { align-self:center; font-size:12px; color:var(--text-dim); padding:4px 12px; background:var(--surface); border-radius:20px; border:1px solid var(--border); }
-
-  footer { background:var(--surface); border-top:1px solid var(--border); padding:12px 16px; flex-shrink:0; padding-bottom:calc(12px + env(safe-area-inset-bottom)); }
-  .input-row { display:flex; gap:8px; align-items:flex-end; }
-  .input-row textarea { flex:1; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); color:var(--text); font-family:var(--font); font-size:14px; padding:10px 14px; resize:none; min-height:44px; max-height:120px; outline:none; }
-  .input-row textarea:focus { border-color:var(--accent); }
-  .input-row button { background:var(--accent); border:none; color:#fff; border-radius:var(--radius); padding:10px 16px; font-size:14px; font-weight:500; cursor:pointer; flex-shrink:0; }
-  .input-row button:disabled { opacity:.4; cursor:default; }
-  .input-row button.stop { background:var(--error); }
-
-  @media (max-width:600px) {
-    .msg { max-width:92%; }
-    .tool-card { max-width:92%; }
-    header { padding:8px 12px; }
-    main { padding:10px; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Agent Chat</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header>
-  <div class="dot" id="connDot"></div>
-  <h1>Agent Frontend</h1>
-  <span class="agent-name" id="agentName"></span>
-   <div class="status-info" id="statusInfo" style="display:none">
-     <div class="model" id="modelName"></div>
-     <div id="ctxInfo"></div>
-   </div>
-  <input id="nickInput" class="nick-input" placeholder="nickname" maxlength="20" onchange="setNickname(this.value)">
-</header>
-
-<main id="chat"></main>
-
-<footer>
-  <div class="input-row">
-    <textarea id="promptInput" placeholder="Send a prompt…" rows="1" autofocus></textarea>
-    <button id="sendBtn" onclick="sendPrompt()">Send</button>
-    <button id="stopBtn" class="stop" style="display:none" onclick="sendAbort()">Stop</button>
+  <div id="gate">
+    <form onsubmit="event.preventDefault();unlock()">
+      <input type="password" id="gateInput" placeholder="password" autocomplete="off">
+      <button type="submit">Enter</button>
+    </form>
+    <div class="hint">enter password</div>
   </div>
-</footer>
 
-<script>
-'use strict';
-const chat = document.getElementById('chat');
-const input = document.getElementById('promptInput');
-const sendBtn = document.getElementById('sendBtn');
-const stopBtn = document.getElementById('stopBtn');
-const connDot = document.getElementById('connDot');
-const agentName = document.getElementById('agentName');
+  <header>
+    <div class="dot" id="dot"></div>
+    <h1>Agent Chat</h1>
+    <div class="status" id="status" style="display:none">
+      <div class="model" id="model"></div>
+      <div id="ctx"></div>
+    </div>
+    <input class="nick" id="nickInput" placeholder="nick" maxlength="20" onchange="saveNick(this.value)">
+  </header>
 
-let ws = null;
-let streaming = false;
-let currentAssistantEl = null;
-let currentTextEl = null;
-let currentThinkingEl = null;
-let nickname = localStorage.getItem('agent-nick') || 'anon-' + Math.random().toString(36).slice(2, 6);
+  <main id="chat"></main>
 
+  <footer>
+    <div class="row">
+      <textarea id="input" placeholder="Send a prompt…" rows="1"></textarea>
+      <button class="send" id="sendBtn" onclick="send()">Send</button>
+      <button class="stop" id="stopBtn" onclick="stop()">Stop</button>
+    </div>
+  </footer>
 
-// ── Rendering ─────────────────────────────────────────────────────────
-
-function addUserMsg(text, sender) {
-  currentAssistantEl = null; currentTextEl = null; currentThinkingEl = null;
-  const el = document.createElement('div');
-  const isMine = sender === nickname;
-  el.className = 'msg ' + (isMine ? 'user' : 'remote-user');
-  if (isMine) {
-    el.textContent = text;
-  } else {
-    el.innerHTML = `<span style="font-size:11px;color:var(--accent);display:block;margin-bottom:4px;">${esc(sender)}</span>${esc(text)}`;
-  }
-  chat.appendChild(el);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function setNickname(nick) {
-  nickname = (nick || '').trim().slice(0, 20) || nickname;
-  localStorage.setItem('agent-nick', nickname);
-}
-
-function ensureAssistant() {
-  if (!currentAssistantEl) {
-    currentAssistantEl = document.createElement('div');
-    currentAssistantEl.className = 'msg assistant';
-    currentTextEl = document.createElement('div');
-    currentAssistantEl.appendChild(currentTextEl);
-    chat.appendChild(currentAssistantEl);
-  }
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function appendText(delta) {
-  ensureAssistant();
-  currentTextEl.textContent += delta;
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function appendThinking(delta) {
-  ensureAssistant();
-  if (!currentThinkingEl) {
-    currentThinkingEl = document.createElement('div');
-    currentThinkingEl.className = 'thinking';
-    currentAssistantEl.insertBefore(currentThinkingEl, currentTextEl);
-  }
-  currentThinkingEl.textContent += delta;
-}
-
-function addToolCard(name, params, status) {
-  currentAssistantEl = null; currentTextEl = null; currentThinkingEl = null;
-  const card = document.createElement('div');
-  card.className = 'tool-card';
-  const header = document.createElement('div');
-  header.className = 'tool-header';
-  header.innerHTML = `<span class="tool-icon">⚙</span> <span class="tool-name">${esc(name)}</span> <span class="tool-status">${status}</span>`;
-  const body = document.createElement('div');
-  body.className = 'tool-body';
-  body.innerHTML = `<pre>${esc(fmtParams(params))}</pre>`;
-  header.onclick = () => card.classList.toggle('expanded');
-  card.appendChild(header);
-  card.appendChild(body);
-  chat.appendChild(card);
-  chat.scrollTop = chat.scrollHeight;
-  return card;
-}
-
-function completeToolCard(card, result) {
-  if (!card) return;
-  card.querySelector('.tool-status').textContent = 'done';
-  const body = card.querySelector('.tool-body');
-  if (result) {
-    body.innerHTML += `<pre style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px">${esc(result)}</pre>`;
-  }
-}
-
-function setStatus(text) {
-  const existing = chat.querySelector('.status-bar');
-  if (existing) existing.remove();
-  if (text) {
-    const el = document.createElement('div');
-    el.className = 'status-bar';
-    el.textContent = text;
-    chat.appendChild(el);
-    chat.scrollTop = chat.scrollHeight;
-  }
-}
-
-function setStreaming(on) {
-  streaming = on;
-  sendBtn.style.display = on ? 'none' : '';
-  stopBtn.style.display = on ? '' : 'none';
-  if (!on) { currentAssistantEl = null; currentTextEl = null; currentThinkingEl = null; }
-}
-
-// ── WebSocket ─────────────────────────────────────────────────────────
-
-function connect() {
-  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${proto}//${location.host}`;
-  ws = new WebSocket(url);
-
-  ws.onopen = () => {
-    connDot.classList.add('on');
-    setStatus(null);
-    input.disabled = false; sendBtn.disabled = false;
-    clearTimeout(reconnectTimer);
-  };
-
-  ws.onclose = () => {
-    connDot.classList.remove('on');
-    setStatus('disconnected — reconnecting…');
-    input.disabled = true; sendBtn.disabled = true;
-    reconnectTimer = setTimeout(connect, 2000);
-  };
-
-  ws.onmessage = (e) => {
-    let msg;
-    try { msg = JSON.parse(e.data); } catch { return; }
-    handleEvent(msg);
-  };
-}
-
-function handleEvent(msg) {
-  switch (msg.type) {
-    case 'bridge_connected':
-      agentName.textContent = msg.agent || '';
-      break;
-    case 'agent_ready':
-      setStatus(null);
-      break;
-    case 'prompt_accepted':
-      setStreaming(true);
-      break;
-    case 'prompt_error':
-      setStatus(`error: ${msg.error}`);
-      setStreaming(false);
-      break;
-    case 'agent_start':
-      setStreaming(true);
-      setStatus(null);
-      break;
-    case 'text_delta':
-      appendText(msg.content || '');
-      break;
-    case 'thinking_delta':
-      appendThinking(msg.content || '');
-      break;
-    case 'tool_start':
-      addToolCard(msg.name || 'tool', msg.params || {}, 'running…');
-      break;
-    case 'tool_end': {
-      const cards = chat.querySelectorAll('.tool-card');
-      const last = cards[cards.length - 1];
-      completeToolCard(last, msg.result);
-      break;
-    }
-    case 'agent_end':
-      setStreaming(false);
-      break;
-    case 'agent_exited':
-      setStatus(`agent exited (${msg.code})`);
-      setStreaming(false);
-      break;
-    case 'state_update':
-      var si = document.getElementById('statusInfo');
-      var mn = document.getElementById('modelName');
-    case 'user_message':
-      addUserMsg(msg.content || '', msg.from || 'someone');
-      break;
-    case 'state_update':
-      if (mn && msg.model) mn.textContent = msg.model.provider + '/' + msg.model.id;
-      if (ci && msg.contextUsage) ci.textContent = Math.round(msg.contextUsage.tokens/1000) + 'k/' + Math.round(msg.contextUsage.contextWindow/1000) + 'k (' + msg.contextUsage.percent.toFixed(1) + '%)';
-      break;
-    case 'notice':
-      setStatus(msg.content);
-      break;
-  }
-}
-
-// ── Actions ───────────────────────────────────────────────────────────
-
-function sendPrompt() {
-  const text = input.value.trim();
-  if (!text || !ws || ws.readyState !== 1) return;
-  input.value = '';
-  input.style.height = 'auto';
-  addUserMsg(text, nickname);
-  ws.send(JSON.stringify({ type: 'prompt', message: text, nickname: nickname }));
-}
-
-function sendAbort() {
-  if (ws && ws.readyState === 1) {
-    ws.send(JSON.stringify({ type: 'abort' }));
-    setStreaming(false);
-  }
-}
-
-input.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendPrompt();
-  }
-});
-input.addEventListener('input', () => {
-  input.style.height = 'auto';
-  input.style.height = Math.min(input.scrollHeight, 120) + 'px';
-});
-
-// ── Utils ─────────────────────────────────────────────────────────────
-
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-function fmtParams(p) {
-  if (!p || typeof p !== 'object') return '';
-  try { return JSON.stringify(p, null, 2); } catch { return String(p); }
-}
-
-document.getElementById('nickInput').value = nickname;
-connect();
-</script>
+  <script src="app.js"></script>
 </body>
 </html>
