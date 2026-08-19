@@ -38,6 +38,10 @@ Agent hooks (Claude Code notification hooks, OMP hooks) push to a self-hosted nt
 
 Expose a local stdio MCP server to other machines' agents: a supergateway bridge (streamable HTTP, stateless `/mcp`) behind the auth gate, published through a hidden tunnel. Verified with `initialize` → `tools/list` → `tools/call` all round-tripping through the public URL. The bridge has no built-in auth, so the gate is mandatory; the skill makes the tool-execution grant explicit.
 
+### Planned: agent-bridge (universal frontend via OMP collab)
+
+The endgame for mobile UX: import any CLI agent's session into a local OMP instance (`omp --from-claude`, `--from-codex`), share it via OMP collab, and every agent gets a collab-quality mobile UI — streaming transcript, tool cards, subagent panel, prompt composer — instead of a raw terminal in the browser. Works today because all pieces exist; the skill composes them.
+
 ## Install
 
 ### From this repository (OMP marketplace)

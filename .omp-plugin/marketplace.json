@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Portal access skills for every CLI agent - terminal sharing, native web UIs, and session sharing.",
-    "version": "0.4.3"
+    "version": "0.5.0"
   },
   "plugins": [
     {
       "name": "oh-my-portal",
       "description": "Universal CLI agent access: reach any terminal-based agent (Claude Code, Codex CLI, Gemini CLI, OMP, opencode, ...) from a phone over a terminal or the agent's native web UI, published behind a Portal tunnel.",
       "source": "./",
-      "version": "0.4.3",
+      "version": "0.5.0",
       "author": {
         "name": "gosuda"
       },
@@ -26,7 +26,7 @@
       "name": "oh-my-omp",
       "description": "OMP-specific: share a live Oh My Pi session with a phone through OMP collab, via the hosted relay or a self-hosted relay behind a Portal tunnel.",
       "source": "./omp",
-      "version": "0.4.3",
+      "version": "0.5.0",
       "author": {
         "name": "gosuda"
       },
