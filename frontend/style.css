@@ -3,11 +3,10 @@
   --text: #e6edf3; --dim: #8b949e; --accent: #58a6ff;
   --error: #f85149; --success: #3fb950; --radius: 12px;
   --sidebar-w: 260px;
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace;
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --code-font: 'JetBrains Mono', 'SF Mono', 'Fira Code', Consolas, monospace;
 }
 html { width:100%; }
-* { margin:0; padding:0; box-sizing:border-box; }
-body { width:100%; background:var(--bg); color:var(--text); font-family:var(--font); height:100dvh; overflow:hidden; }
 
 /* Gate */
 #gate { position:fixed; inset:0; background:var(--bg); z-index:200; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:16px; }
@@ -39,6 +38,9 @@ body { width:100%; background:var(--bg); color:var(--text); font-family:var(--fo
 .sb-item .sb-count { font-size:10px; color:var(--dim); }
 .sb-item .sb-del { background:none; border:none; color:var(--dim); font-size:14px; cursor:pointer; padding:2px 4px; border-radius:4px; }
 .sb-item .sb-del:hover { color:var(--error); background:var(--surface); }
+.sb-item .sb-ren { background:none; border:none; color:var(--dim); font-size:12px; cursor:pointer; padding:2px 4px; border-radius:4px; }
+.sb-item .sb-ren:hover { color:var(--accent); background:var(--surface); }
+.sb-item .sb-title-input { flex:1; min-width:0; font-size:13px; background:var(--bg); border:1px solid var(--accent); border-radius:4px; color:var(--text); padding:2px 6px; outline:none; font-family:inherit; }
 
 /* Main app */
 #app { width:100%; height:100dvh; display:flex; flex-direction:column; overflow:hidden; }
@@ -83,7 +85,7 @@ main::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 .code-block { background:var(--bg); border:1px solid var(--border); border-radius:8px; margin:8px 0; overflow:hidden; }
 .code-block .code-lang { font-size:10px; color:var(--dim); padding:4px 10px; border-bottom:1px solid var(--border); background:var(--surface); text-transform:uppercase; letter-spacing:.5px; }
 .code-block pre { padding:10px 12px; overflow-x:auto; margin:0; }
-.code-block code { font-family:'SF Mono', 'Fira Code', 'Consolas', monospace; font-size:12px; line-height:1.5; color:var(--text); }
+.code-block code { font-family:var(--code-font); font-size:12px; line-height:1.5; color:var(--text); }
 
 /* Syntax highlighting */
 .code-block .k { color:#ff7b72; }
@@ -97,7 +99,7 @@ main::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 .tool .bd .lbl { display:block; font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
 .tool .bd .tool-params pre { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px; font-size:11px; color:var(--dim); white-space:pre-wrap; max-height:120px; overflow-y:auto; }
 .tool .bd .tool-result pre { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px; font-size:12px; white-space:pre-wrap; max-height:180px; overflow-y:auto; }
-.tool .bd .tool-result pre code { font-family:'SF Mono', 'Fira Code', 'Consolas', monospace; font-size:12px; line-height:1.5; }
+.tool .bd .tool-result pre code { font-family:var(--code-font); font-size:12px; line-height:1.5; }
 .tool .st.done { color:var(--success); }
 
 /* Slash command output + model picker */
@@ -150,7 +152,7 @@ main::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 .hub-card.st-failed { border-color:#ef5350; }
 .hc-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
 .hc-name { font-weight:600; font-size:14px; }
-.hc-out { font-size:12px; color:var(--text); background:var(--surface); border-radius:6px; padding:6px 8px; margin-top:4px; white-space:pre-wrap; max-height:80px; overflow:hidden; font-family:'SF Mono','Fira Code','Consolas',monospace; }
+.hc-out { font-size:12px; color:var(--text); background:var(--surface); border-radius:6px; padding:6px 8px; margin-top:4px; white-space:pre-wrap; max-height:80px; overflow:hidden; font-family:var(--code-font); }
 .hc-open { margin-top:6px; background:none; border:1px solid var(--border); border-radius:6px; color:var(--accent); font-size:11px; padding:3px 10px; cursor:pointer; font-family:inherit; }
 .hc-open:hover { border-color:var(--accent); }
 
@@ -172,7 +174,7 @@ main::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 .st-failed .hc-status { color:#ef5350; border-color:#ef5350; }
 .hc-meta { display:flex; justify-content:space-between; gap:8px; font-size:11px; color:var(--dim); margin-bottom:4px; flex-wrap:wrap; }
 .hc-stats { font-variant-numeric:tabular-nums; }
-.hc-out { font-size:12px; color:var(--text); background:var(--surface); border-radius:6px; padding:6px 8px; margin-top:4px; white-space:pre-wrap; max-height:80px; overflow:hidden; font-family:'SF Mono','Fira Code','Consolas',monospace; }
+.hc-out { font-size:12px; color:var(--text); background:var(--surface); border-radius:6px; padding:6px 8px; margin-top:4px; white-space:pre-wrap; max-height:80px; overflow:hidden; font-family:var(--code-font); }
 
 .msg { max-width:85%; line-height:1.6; font-size:14px; word-break:break-word; }
 .msg.mine, .msg.theirs { white-space:pre-wrap; }
@@ -216,4 +218,12 @@ footer { position:relative; width:100%; background:var(--surface); border-top:1p
   header { padding:8px 10px; }
   main { padding:10px; }
   #sidebar { width:80vw; }
+}
+
+/* ── Desktop (≥768px): docked sidebar, full-width content ──────────── */
+@media (min-width:768px) {
+  #sidebar { transform:none; transition:none; }            /* always open */
+  #sidebar-overlay { display:none !important; }             /* never an overlay */
+  #app { margin-left: var(--sidebar-w); }                   /* docked column */
+  .menu-btn { display:none; }                               /* no toggle needed */
 }

@@ -39,6 +39,7 @@ const modelEl = document.getElementById('model');
 const ctxEl = document.getElementById('ctx');
 const costEl = document.getElementById('cost');
 const sidebar = document.getElementById('sidebar');
+const sessionListEl = document.getElementById('sessionList');
 const sidebarOverlay = document.getElementById('sidebar-overlay');
 const gateEl = document.getElementById('gate');
 const gateInput = document.getElementById('gateInput');
@@ -68,7 +69,7 @@ let agentEl = null;          // bubble element
 let textEl = null;           // markdown container inside bubble
 let thinkEl = null;          // thinking container inside bubble
 let pendingMd = '';          // unrendered markdown accumulator
-
+let lastSessions = [];       // last session_list payload (restore on cancel)
 let nick = localStorage.getItem('chat-nick') || 'anon-' + Math.random().toString(36).slice(2, 6);
 nickInput.value = nick;
 
@@ -147,7 +148,6 @@ function deleteSession(id, e) {
     ws.send(JSON.stringify({ type: 'delete_session', sessionId: id }));
   }
 }
-
 function renderSessionList(sessions) {
   sessionListEl.innerHTML = '';
   for (const s of sessions) {
@@ -156,13 +156,44 @@ function renderSessionList(sessions) {
     el.innerHTML = `
       <span class="sb-title">${esc(s.title)}</span>
       <span class="sb-count">${s.messageCount || ''}</span>
-      <button class="sb-del" onclick="deleteSession('${s.id}',event)">×</button>`;
+      <button class="sb-ren" title="rename" onclick="renameSession('${s.id}',event)">✎</button>
+      <button class="sb-del" title="delete" onclick="deleteSession('${s.id}',event)">×</button>`;
     el.onclick = () => switchSession(s.id);
     sessionListEl.appendChild(el);
   }
 }
 
-// ── 6. Chat rendering (R1, R5, R6, R7, R10, R15) ────────────────────
+// Inline rename: swap the title span for an input; Enter/blur commits,
+// Escape cancels. The bridge rebroadcasts session_list on success.
+function renameSession(id, e) {
+  e.stopPropagation();
+  const item = e.target.closest('.sb-item');
+  const titleEl = item.querySelector('.sb-title');
+  if (!titleEl || item.querySelector('.sb-title-input')) return;
+  const input = document.createElement('input');
+  input.className = 'sb-title-input';
+  input.value = titleEl.textContent;
+  input.maxLength = 60;
+  titleEl.replaceWith(input);
+  input.focus();
+  input.select();
+  const commit = () => {
+    const title = input.value.trim();
+    if (title && ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({ type: 'rename_session', sessionId: id, title }));
+    }
+    // session_list broadcast re-renders; if the send failed, restore manually
+    if (!title || !ws || ws.readyState !== 1) renderSessionList(lastSessions);
+  };
+  const cancel = () => renderSessionList(lastSessions);
+  input.addEventListener('keydown', (ev) => {
+    ev.stopPropagation();
+    if (ev.key === 'Enter') input.blur();
+    if (ev.key === 'Escape') { input.removeEventListener('blur', commit); cancel(); }
+  });
+  input.addEventListener('blur', commit);
+  input.addEventListener('click', (ev) => ev.stopPropagation());
+}
 
 function userMsg(text, who) {
   resetAgent();
@@ -627,7 +658,8 @@ function handleEvent(msg) {
   switch (msg.type) {
     // Sessions
     case 'session_list':
-      renderSessionList(msg.sessions || []);
+      lastSessions = msg.sessions || [];
+      renderSessionList(lastSessions);
       break;
     case 'session_switched':
       activeSessionId = msg.sessionId;
@@ -643,6 +675,14 @@ function handleEvent(msg) {
     case 'session_history':
       loadHistory(msg.messages || []);
       break;
+    // Turn lifecycle
+    case 'agent_ready':
+      break; // informational — adapter is up; no UI change
+    case 'prompt_accepted':
+      setStream(true);
+      armPromptWatchdog();
+      break;
+
     // Feature negotiation — the adapter decides what the UI offers
     case 'capabilities':
       caps = { ...caps, ...(msg.caps || {}) };
@@ -773,11 +813,11 @@ function connect() {
     sendBtn.disabled = false;
     gateEl.style.display = 'none';  // connected → authenticated (or no gate)
     clearTimeout(reconnectTimer);
-    // The bridge reattaches refreshes to the latest session (R2); on a
-    // first-ever connect it auto-creates one.
-    if (!activeSessionId) {
-      ws.send(JSON.stringify({ type: 'new_session' }));
-    } else {
+    // The bridge attaches every connection to the latest session (or
+    // creates one when none exist) and sends session_switched — the
+    // client must NOT send new_session here: it races the bridge's
+    // attachment and would spawn a fresh session on every connect.
+    if (activeSessionId) {
       ws.send(JSON.stringify({ type: 'switch_session', sessionId: activeSessionId }));
     }
   };

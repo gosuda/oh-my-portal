@@ -21,8 +21,8 @@ const flag = (name: string, fallback: string): string => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 && args[i + 1] ? args[i + 1] : fallback;
 };
-const AGENT = flag("agent", "omp");
-const PORT = parseInt(flag("port", "7683"), 10);
+const AGENT = flag("agent", process.env.AGENT || "omp");
+const PORT = parseInt(flag("port", process.env.PORT || "7683"), 10);
 
 // ── Adapter factory ──────────────────────────────────────────────────
 
@@ -126,6 +126,18 @@ function broadcastAll(obj: Record<string, unknown>): void {
 const html = await Bun.file(new URL("./index.html", import.meta.url)).text();
 const css = await Bun.file(new URL("./style.css", import.meta.url)).text();
 const js = await Bun.file(new URL("./app.js", import.meta.url)).text();
+const mdjs = await Bun.file(new URL("./markdown.js", import.meta.url)).text();
+
+// Deploy gate: the bridge refuses to boot on a static-contract violation.
+// A broken frontend physically cannot ship, even if the suite is skipped.
+const { runStaticChecks } = await import("./contract");
+const staticResult = runStaticChecks();
+if (staticResult.failed.length > 0) {
+  console.error("[bridge] STATIC CONTRACT FAILED — refusing to serve:");
+  for (const f of staticResult.failed) console.error(`  ✗ ${f.name}\n    ${f.error}`);
+  process.exit(1);
+}
+console.log(`[bridge] static contract: ${staticResult.passed.length} checks passed`);
 
 const GATE_PASSWORD = process.env.GATE_PASSWORD || "";
 const RUN_TOKEN = crypto.randomUUID();
@@ -150,14 +162,21 @@ Bun.serve({
     // WebSocket upgrade — token attached as ?token=
     if (server.upgrade(req, { data: { token: url.searchParams.get("token") } })) return;
 
+    // Assets are re-read at boot but browsers cached them heuristically
+    // (no validator headers) — stale app.js reconnect-looped against the
+    // token gate. Forbid caching so every load gets the shipped code.
+    const noStore = { "Cache-Control": "no-store" };
     if (path === "/" || path === "/index.html") {
-      return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+      return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", ...noStore } });
     }
     if (path === "/style.css") {
-      return new Response(css, { headers: { "Content-Type": "text/css; charset=utf-8" } });
+      return new Response(css, { headers: { "Content-Type": "text/css; charset=utf-8", ...noStore } });
     }
     if (path === "/app.js") {
-      return new Response(js, { headers: { "Content-Type": "application/javascript; charset=utf-8" } });
+      return new Response(js, { headers: { "Content-Type": "application/javascript; charset=utf-8", ...noStore } });
+    }
+    if (path === "/markdown.js") {
+      return new Response(mdjs, { headers: { "Content-Type": "application/javascript; charset=utf-8", ...noStore } });
     }
     if (path === "/healthz") {
       return new Response("ok");
@@ -220,6 +239,14 @@ Bun.serve({
         broadcastAll({ type: "session_list", sessions: sessionList() });
       }
 
+      else if (type === "rename_session" && typeof msg.sessionId === "string") {
+        const session = sessions.get(msg.sessionId);
+        const title = String(msg.title || "").trim().slice(0, 60);
+        if (session && title) {
+          session.title = title;
+          broadcastAll({ type: "session_list", sessions: sessionList() });
+        }
+      }
       else if (type === "list_sessions") {
         ws.send(JSON.stringify({ type: "session_list", sessions: sessionList() }));
       }
