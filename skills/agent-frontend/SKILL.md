@@ -1,70 +1,85 @@
 ---
 name: agent-frontend
-description: Deploy a rich web chat interface for any CLI agent through a Portal tunnel — streaming text, tool cards, thinking display, and interrupt, served from a Bun bridge that adapts the agent's RPC protocol into a universal event stream. Use when the user asks for a proper web UI (not a terminal) to interact with their agent from a phone or browser, or wants a chat-like interface instead of a TUI. Do not use for terminal access (agent-terminal) or OMP's native collab (oh-my-omp).
+description: Deploy a rich web chat interface for any CLI agent through a Portal tunnel — streaming text, tool cards, thinking display, slash commands with autocomplete, and per-person nicknames, served from a Bun bridge with pluggable adapters. Use when the user asks for a proper web UI (not a terminal) to interact with their agent from a phone or browser, or wants a chat-like interface instead of a TUI. Do not use for terminal access (agent-terminal) or OMP's native collab (oh-my-omp).
 license: MIT
 ---
 
 # Rich Web Chat Interface for Any CLI Agent
 
-The frontend is a single-page web app that provides a polished chat experience — streaming text, collapsible tool cards, thinking display, and an interrupt button — over any CLI agent. The bridge process (`agent-bridge.ts`) spawns the agent and translates its protocol into universal events the frontend renders.
-
-Currently verified with OMP RPC (the most stable, documented protocol). The adapter layer is designed to add other agents.
+A polished web chat — streaming text, collapsible tool cards, thinking display, slash commands with autocomplete — over any CLI agent. The bridge process adapts each agent's protocol into a universal event stream the frontend renders. Currently supports OMP (full features), Claude Code, Codex, and opencode via SDK/API adapters, plus a universal subprocess fallback for everything else.
 
 ## Architecture
 
 ```
 Phone/browser ── HTTPS ──→ Portal tunnel ──→ caddy (auth) ──→ agent-bridge.ts
                                                                   │
-                                                     Bun WebSocket + HTTP server
-                                                                  │
-                                                         spawn: omp --mode rpc
+                                              ┌── Adapter Layer ──┤
+                                              │  omp-rpc  (full)  │
+                                              │  claude-code (SDK)│
+                                              │  codex (SDK)      │
+                                              │  opencode (API)   │
+                                              │  simple (subproc) │
+                                              └───────────────────┘
 ```
 
-- **Frontend** (`frontend/index.html`): self-contained SPA, dark theme, mobile-first, zero external dependencies
-- **Bridge** (`frontend/agent-bridge.ts`): Bun script — spawns the agent process, bridges stdio JSON-RPC to WebSocket events
-- **Auth**: mandatory caddy `basic_auth` gate (same recipe as agent-web)
+Files:
+- `frontend/index.html` — minimal shell, links to CSS and JS
+- `frontend/style.css` — dark theme, mobile-first
+- `frontend/app.js` — frontend logic, universal event rendering, slash command autocomplete
+- `frontend/agent-bridge.ts` — Bun server, serves files + WebSocket, adapter selection
+- `frontend/adapters/types.ts` — AgentAdapter interface (the contract)
+- `frontend/adapters/omp-rpc.ts` — OMP RPC adapter (streaming, tools, state, slash commands)
+- `frontend/adapters/claude-code.ts` — Anthropic SDK adapter
+- `frontend/adapters/codex.ts` — OpenAI SDK adapter
+- `frontend/adapters/opencode.ts` — opencode serve API adapter
+- `frontend/adapters/simple.ts` — universal subprocess fallback
+
+## Adapter capability matrix
+
+| Adapter | Streaming | Tools | Thinking | State/Model | Slash cmds |
+|---|---|---|---|---|---|
+| OMP RPC | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Claude Code | ✓ | ✓ | ✓ | basic | ✗ |
+| Codex | ✓ | ✓ | ✗ | basic | ✗ |
+| opencode | ✓ | ✗ | ✗ | basic | ✗ |
+| Simple | ✗ | ✗ | ✗ | ✗ | ✗ |
 
 ## Hard rules
 
 - Never expose the bridge without the auth gate — it accepts prompts and controls the agent.
-- The bridge binds loopback only (`127.0.0.1`); Portal provides the public edge.
-- `--hide` on the tunnel — a chat interface gains nothing from being listed.
-- Long random password on the gate; hand it over once.
+- The bridge binds loopback only; Portal provides the public edge.
+- `--hide` on the tunnel.
+- Long random password on the gate.
 
 ## Workflow
 
 ### 1. Verify prerequisites
 
-- `bun --version` (the bridge is a Bun script — OMP users already have Bun)
-- An omp binary available (`omp --version`) for the default adapter
-- The frontend files at `<repo>/frontend/` (both `agent-bridge.ts` and `index.html`)
+- `bun --version` (the bridge is a Bun script)
+- An agent available: `omp --version` for the default, or the relevant SDK/API key for other adapters
+## Shared session behavior
 
-### 2. Start the bridge
+Each client connection gets its own auto-created session with an independent agent process. Sessions are listed in a sidebar (☰ toggle); users can create new ones, switch between them (loading history), and delete them. Session titles auto-populate from the first prompt (first 40 chars). Slash commands (`/model`, `/compact`, etc.) apply to the active session only. Multiple clients on the same session share context; each client's own session is private.
+
+## Hard rules
 
 ```sh
 cd <repo>/frontend
 bun agent-bridge.ts --port 7683
 ```
 
-The bridge:
-- Serves the web UI at `http://127.0.0.1:7683/`
-- Exposes a WebSocket at the same port
-- Spawns `omp --mode rpc` on the first client connection
-- Negotiates RPC protocol v2 automatically
-
-To use a different agent, pass `--agent "<command>"`:
+Select a specific agent:
 
 ```sh
-bun agent-bridge.ts --agent "claude --mode rpc" --port 7683
+bun agent-bridge.ts --agent claude --port 7683    # Claude Code (ANTHROPIC_API_KEY)
+bun agent-bridge.ts --agent codex --port 7683     # OpenAI (OPENAI_API_KEY)
+bun agent-bridge.ts --agent opencode --port 7683  # opencode serve
+bun agent-bridge.ts --agent gemini --port 7683    # subprocess fallback
 ```
 
 ### 3. Gate + publish
 
 Reuse the agent-web caddy recipe:
-
-```sh
-caddy hash-password --plaintext '<long random password>'
-```
 
 ```
 :8080 {
@@ -81,29 +96,23 @@ portal expose 127.0.0.1:8080 --name <hard-to-guess-name> --hide
 
 ### 4. Verify
 
-- Public URL without credentials → `401`
-- With credentials → the chat interface loads (dark theme, input box visible)
-- Send a test prompt → streaming response appears with tool cards
-- WebSocket upgrade succeeds (check browser DevTools network tab)
+- No credentials → `401`
+- With credentials → the chat UI loads (dark theme, input box, connection dot green)
+- Type `/` in the input → command autocomplete appears
+- Send a prompt → streaming response with tool cards
+- Check the header shows the agent's model name and context usage
 
 ### 5. Hand off
 
-Report: the public URL, credentials, what the agent is, and the stop sequence (Portal tunnel → caddy → bridge → agent process).
+Report: the public URL, credentials, which agent adapter is active, and the stop sequence.
 
-## Adapter status
+## Shared session behavior
 
-| Adapter | Status | Command |
-|---|---|---|
-| OMP RPC | **Verified** | `omp --mode rpc` (default) |
-| Generic stdio | Planned | any CLI agent via line-based JSON |
-| Claude Code | Planned | `claude --mode rpc` or SDK |
-| Terminal fallback | Planned | xterm.js overlay for agents without adapters |
-
-Adding a new agent = implementing one function that translates its output into the universal event stream (`text_delta`, `thinking_delta`, `tool_start`, `tool_end`, `agent_start`, `agent_end`). The frontend is agent-agnostic.
+All connected clients share one agent process. Prompts from any participant are visible to all (with nicknames); an interrupt from one stops the turn for everyone. For private per-person sessions, use `agent-share`.
 
 ## Failure rules
 
 - Bridge not reachable locally: check Bun is installed and the port is free.
-- WebSocket connects but no response from agent: check the agent process spawned (`bridge` logs to stderr).
-- Public URL returns the page but WebSocket fails: the gate or relay may not forward WebSocket upgrades — verify locally first, then through the tunnel.
-- Agent exits unexpectedly: the bridge reports `agent_exited` to the client and will respawn on the next prompt.
+- WebSocket connects but no response: check the agent process spawned.
+- Public URL loads but WebSocket fails: verify the gate or relay forwards WebSocket upgrades.
+- `/` autocomplete doesn't show: the input must start with `/` and contain no spaces.

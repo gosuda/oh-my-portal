@@ -10,6 +10,7 @@
   "keywords": ["cli-agent", "remote-access", "phone", "mobile", "claude-code", "codex", "gemini-cli", "opencode", "oh-my-pi", "mcp", "tmux", "tunnel", "portal", "self-hosted"],
   "files": [
     "omp/",
+    "frontend/",
     ".omp-plugin/marketplace.json",
     ".cursor-plugin/marketplace.json",
     ".agents/plugins/marketplace.json",
