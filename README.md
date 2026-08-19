@@ -4,6 +4,8 @@ Portal access skills for [Oh My Pi](https://github.com/can1357/oh-my-pi) and eve
 
 ## Skills
 
+### omp-collab
+
 Shares a live OMP session with a phone or remote browser through OMP collab:
 
 - **Hosted path** — the user runs `/collab` in the OMP TUI and opens the printed `my.omp.sh` link or QR on the phone. No infrastructure; payloads are end-to-end encrypted (AES-256-GCM) and the relay only sees ciphertext.
@@ -36,7 +38,7 @@ Run `/reload-plugins` after installing to refresh skills.
 ### From npm
 
 ```sh
-omp plugin install omp-portal
+omp plugin install oh-my-portal
 ```
 
 ### Claude Code
@@ -45,13 +47,13 @@ The catalog is also published in the Claude Code plugin registry format (`.claud
 
 ```sh
 claude plugin marketplace add gosuda/oh-my-portal
-claude plugin install omp-portal@omp-portal
+claude plugin install oh-my-portal@oh-my-portal
 ```
 
 ## Layout
 
 ```text
-omp-portal/
+oh-my-portal/
 ├── .omp-plugin/marketplace.json        # OMP marketplace catalog (preferred)
 ├── .claude-plugin/marketplace.json     # Claude Code-compatible catalog
 ├── .claude-plugin/plugin.json          # plugin manifest
@@ -64,7 +66,7 @@ omp-portal/
 
 ## Publishing
 
-- npm: `npm publish` (package `omp-portal`; the tarball carries the catalogs, plugin manifest, and skills).
+- npm: `npm publish` (package `oh-my-portal`; the tarball carries the catalogs, plugin manifest, and skills).
 - Marketplace consumers track this repository's `main` branch; bump `version` in both `package.json` and `.omp-plugin/marketplace.json` together.
 
 ## License
