@@ -16,26 +16,38 @@
     <div class="hint">enter password</div>
   </div>
 
-  <header>
-    <div class="dot" id="dot"></div>
-    <h1>Agent Chat</h1>
-    <div class="status" id="status" style="display:none">
-      <div class="model" id="model"></div>
-      <div id="ctx"></div>
-    </div>
-    <input class="nick" id="nickInput" placeholder="nick" maxlength="20" onchange="saveNick(this.value)">
-  </header>
+  <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-  <main id="chat"></main>
-
-  <footer>
-    <div class="cmd-list" id="cmdList"></div>
-    <div class="row">
-      <textarea id="input" placeholder="Send a prompt… or / for commands" rows="1"></textarea>
-      <button class="send" id="sendBtn" onclick="send()">Send</button>
-      <button class="stop" id="stopBtn" onclick="stop()">Stop</button>
+  <aside id="sidebar">
+    <div class="sb-header">
+      <button class="sb-new" onclick="newSession()">＋ New Chat</button>
     </div>
-  </footer>
+    <div class="sb-list" id="sessionList"></div>
+  </aside>
+
+  <div id="app">
+    <header>
+      <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+      <div class="dot" id="dot"></div>
+      <h1 id="chatTitle">Agent Chat</h1>
+      <div class="status" id="status" style="display:none">
+        <div class="model" id="model"></div>
+        <div id="ctx"></div>
+      </div>
+      <input class="nick" id="nickInput" placeholder="nick" maxlength="20" onchange="saveNick(this.value)">
+    </header>
+
+    <main id="chat"></main>
+
+    <footer>
+      <div class="cmd-list" id="cmdList"></div>
+      <div class="row">
+        <textarea id="input" placeholder="Send a prompt… or / for commands" rows="1"></textarea>
+        <button class="send" id="sendBtn" onclick="send()">Send</button>
+        <button class="stop" id="stopBtn" onclick="stop()">Stop</button>
+      </div>
+    </footer>
+  </div>
 
   <script src="app.js"></script>
 </body>

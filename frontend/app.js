@@ -6,12 +6,17 @@ const input = document.getElementById('input');
 const sendBtn = document.getElementById('sendBtn');
 const stopBtn = document.getElementById('stopBtn');
 const dot = document.getElementById('dot');
+const sidebar = document.getElementById('sidebar');
+const sidebarOverlay = document.getElementById('sidebar-overlay');
+const sessionListEl = document.getElementById('sessionList');
+const chatTitle = document.getElementById('chatTitle');
 
 // ── State ─────────────────────────────────────────────────────────────
 let ws = null;
 let streaming = false;
 let agentEl = null, textEl = null, thinkEl = null;
 let reconnectTimer = null;
+let activeSessionId = null;
 let nick = localStorage.getItem('chat-nick') || 'anon-' + Math.random().toString(36).slice(2, 6);
 document.getElementById('nickInput').value = nick;
 
@@ -34,6 +39,67 @@ function unlock() {
 }
 if (localStorage.getItem('chat-pass') === '1') {
   document.getElementById('gate').style.display = 'none';
+}
+
+// ── Sidebar ────────────────────────────────────────────────────────────
+function toggleSidebar() {
+  sidebar.classList.toggle('open');
+  sidebarOverlay.classList.toggle('open');
+}
+
+function newSession() {
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: 'new_session' }));
+  }
+  toggleSidebar();
+}
+
+function switchSession(id) {
+  if (ws && ws.readyState === 1 && id !== activeSessionId) {
+    ws.send(JSON.stringify({ type: 'switch_session', sessionId: id }));
+  }
+  toggleSidebar();
+}
+
+function deleteSession(id, e) {
+  e.stopPropagation();
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({ type: 'delete_session', sessionId: id }));
+  }
+}
+
+function renderSessionList(sessions) {
+  sessionListEl.innerHTML = '';
+  for (const s of sessions) {
+    const el = document.createElement('div');
+    el.className = 'sb-item' + (s.id === activeSessionId ? ' active' : '');
+    el.innerHTML = `
+      <span class="sb-title">${esc(s.title)}</span>
+      <span class="sb-count">${s.messageCount || ''}</span>
+      <button class="sb-del" onclick="deleteSession('${s.id}',event)">×</button>`;
+    el.onclick = () => switchSession(s.id);
+    sessionListEl.appendChild(el);
+  }
+}
+
+function clearChat() {
+  chat.innerHTML = '';
+  agentEl = null; textEl = null; thinkEl = null;
+}
+
+function loadHistory(messages) {
+  chat.innerHTML = '';
+  agentEl = null; textEl = null; thinkEl = null;
+  for (const m of messages) {
+    if (m.role === 'user') {
+      userMsg(m.content, m.from || nick);
+    } else if (m.role === 'assistant' && m.content) {
+      agentEl = null; thinkEl = null;
+      renderText(m.content);
+      agentEl = null;
+    }
+  }
+  chat.scrollTop = chat.scrollHeight;
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────
@@ -115,6 +181,16 @@ function setStream(on) {
 // ── Event dispatch ────────────────────────────────────────────────────
 function handleEvent(msg) {
   switch (msg.type) {
+    case 'session_list':
+      renderSessionList(msg.sessions || []);
+      break;
+    case 'session_switched':
+      activeSessionId = msg.sessionId;
+      clearChat();
+      break;
+    case 'session_history':
+      loadHistory(msg.messages || []);
+      break;
     case 'text_delta':
       renderText(msg.content || '');
       break;
@@ -190,6 +266,12 @@ function connect() {
     input.disabled = false;
     sendBtn.disabled = false;
     clearTimeout(reconnectTimer);
+    // Auto-create session on first connect
+    if (!activeSessionId) {
+      ws.send(JSON.stringify({ type: 'new_session' }));
+    } else {
+      ws.send(JSON.stringify({ type: 'switch_session', sessionId: activeSessionId }));
+    }
   };
 
   ws.onclose = () => {
@@ -209,11 +291,16 @@ function connect() {
 // ── Actions ───────────────────────────────────────────────────────────
 function send() {
   const t = input.value.trim();
-  if (!t || !ws || ws.readyState !== 1) return;
+  if (!t || !ws || ws.readyState !== 1 || !activeSessionId) return;
   input.value = '';
   input.style.height = 'auto';
   userMsg(t, nick);
-  ws.send(JSON.stringify({ type: 'prompt', message: t, nickname: nick }));
+  ws.send(JSON.stringify({
+    type: 'prompt',
+    message: t,
+    sessionId: activeSessionId,
+    nickname: nick,
+  }));
 }
 
 function stop() {
@@ -224,7 +311,6 @@ function stop() {
 }
 
 // ── Command autocomplete ──────────────────────────────────────────────
-
 const COMMANDS = [
   { cmd: '/model',    desc: 'Show or switch the current model' },
   { cmd: '/compact',  desc: 'Compress the conversation context' },
@@ -245,7 +331,6 @@ function showCmds(text) {
     cmdActiveIndex = -1;
     return;
   }
-
   const q = text.slice(1).toLowerCase();
   const matches = COMMANDS.filter(c => c.cmd.slice(1).toLowerCase().startsWith(q));
   if (matches.length === 0) {
@@ -253,7 +338,6 @@ function showCmds(text) {
     cmdList.innerHTML = '';
     return;
   }
-
   cmdList.innerHTML = '';
   for (const m of matches) {
     const el = document.createElement('div');
@@ -288,6 +372,7 @@ function cmdAccept() {
   if (target) target.click();
 }
 
+// ── Input events ──────────────────────────────────────────────────────
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
