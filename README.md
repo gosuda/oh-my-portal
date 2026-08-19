@@ -1,19 +1,30 @@
 # Oh My Portal
 
-Portal access skills for [Oh My Pi](https://github.com/can1357/oh-my-pi) and every CLI agent — share a live session, expose a native web UI, or reach any agent's terminal from a phone. Built on [Portal](https://github.com/gosuda/portal-tunnel), the trustless relay network: tenant TLS terminates on your machine, the relay sees only ciphertext.
+Portal access skills for every CLI agent — OMP, Claude Code, Codex CLI, Gemini CLI, opencode, or anything else that lives in a terminal. Reach your agent from a phone or remote browser through [Portal](https://github.com/gosuda/portal-tunnel), the trustless relay network: tenant TLS terminates on your machine, the relay only ever sees ciphertext.
+
+Two plugins ship from this repository:
+
+- **`oh-my-portal`** (main, universal) — pattern-based skills that work with every CLI agent.
+- **`oh-my-omp`** (OMP-specific, under `omp/`) — native OMP collab integration.
 
 ## Skills
 
-### omp-collab
+### agent-terminal (universal)
 
-Shares a live OMP session with a phone or remote browser through OMP collab:
+Reach any terminal-based CLI agent from a phone: **tmux** keeps the agent alive and resumable, **ttyd** serves the terminal over WebSocket, and **Portal** publishes it as public HTTPS. The only per-agent difference is the launch command, carried in a small matrix (`omp`, `claude`, `codex`, ...). Security rules are front-loaded: loopback bind only, credentials always, never an open terminal — a terminal is shell-equivalent.
+
+### omp-collab (OMP-specific, `oh-my-omp` plugin)
+
+Share a live OMP session through OMP collab:
 
 - **Hosted path** — the user runs `/collab` in the OMP TUI and opens the printed `my.omp.sh` link or QR on the phone. No infrastructure; payloads are end-to-end encrypted (AES-256-GCM) and the relay only sees ciphertext.
 - **Self-hosted path** — the collab relay stand-in runs on the user's machine and is published through a Portal tunnel (`portal expose 127.0.0.1:7466`), with `collab.relayUrl` pointing at the tunnel and `collab.webUrl` at an HTTPS web-client origin. Session traffic terminates on the user's own machine.
 
-The `omp-collab` skill teaches an agent the full workflow: OMP checks, relay startup, tunnel command construction with safe identity handling, WebSocket verification through the public URL, OMP settings, and hand-off. Only the host human mints collab links; the agent never fabricates or logs them.
+Only the host human mints collab links; the agent prepares infrastructure and never fabricates or logs them.
 
-Planned sibling skills generalize the pattern to other CLI agents: native web UIs (`opencode serve`, community Claude Code / Codex UIs) and a universal `tmux` + terminal-over-WebSocket fallback published through Portal.
+### Planned
+
+`agent-web` — recipes for agents with native web UIs (`opencode serve`, community Claude Code / Codex UIs): plain port exposure through Portal, per-agent safe-launch notes.
 
 ## Install
 
@@ -21,10 +32,11 @@ Planned sibling skills generalize the pattern to other CLI agents: native web UI
 
 ```sh
 omp plugin marketplace add gosuda/oh-my-portal
-omp plugin install oh-my-portal@oh-my-portal
+omp plugin install oh-my-portal@oh-my-portal   # universal skills
+omp plugin install oh-my-omp@oh-my-portal       # OMP collab (optional)
 ```
 
-Or inside the OMP TUI: `/marketplace add gosuda/oh-my-portal`, then `/marketplace install oh-my-portal@oh-my-portal`.
+Or inside the OMP TUI: `/marketplace add gosuda/oh-my-portal`, then `/marketplace install ...`.
 
 Local development:
 
@@ -41,6 +53,8 @@ Run `/reload-plugins` after installing to refresh skills.
 omp plugin install oh-my-portal
 ```
 
+(The npm package carries the universal plugin; the OMP-specific plugin installs from the marketplace above.)
+
 ### Claude Code
 
 The catalog is also published in the Claude Code plugin registry format (`.claude-plugin/marketplace.json`):
@@ -54,20 +68,24 @@ claude plugin install oh-my-portal@oh-my-portal
 
 ```text
 oh-my-portal/
-├── .omp-plugin/marketplace.json        # OMP marketplace catalog (preferred)
+├── .omp-plugin/marketplace.json        # OMP marketplace catalog: both plugins
 ├── .claude-plugin/marketplace.json     # Claude Code-compatible catalog
-├── .claude-plugin/plugin.json          # plugin manifest
-├── skills/omp-collab/                   # skill name stays omp-collab
-│   ├── SKILL.md                        # agent workflow
-│   └── references/omp-collab-details.md
-├── package.json                        # npm distribution
+├── .claude-plugin/plugin.json          # oh-my-portal (main) manifest
+├── skills/
+│   └── agent-terminal/                 # universal: any CLI agent via tmux+ttyd+Portal
+├── omp/                                # oh-my-omp (OMP-specific plugin)
+│   ├── .claude-plugin/plugin.json
+│   └── skills/omp-collab/
+│       ├── SKILL.md
+│       └── references/omp-collab-details.md
+├── package.json                        # npm distribution (universal plugin)
 └── README.md
 ```
 
 ## Publishing
 
-- npm: `npm publish` (package `oh-my-portal`; the tarball carries the catalogs, plugin manifest, and skills).
-- Marketplace consumers track this repository's `main` branch; bump `version` in both `package.json` and `.omp-plugin/marketplace.json` together.
+- npm: `npm publish` (package `oh-my-portal`; the tarball carries the catalogs, both plugin manifests, and all skills).
+- Marketplace consumers track this repository's `main` branch; bump `version` in `package.json`, both plugin manifests, and the catalog entries together.
 
 ## License
 

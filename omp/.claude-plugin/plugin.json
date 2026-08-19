@@ -1,0 +1,13 @@
+{
+  "name": "oh-my-omp",
+  "version": "0.3.0",
+  "description": "OMP-specific access: share a live Oh My Pi session with a phone or remote browser through OMP collab, via the hosted relay or a self-hosted relay behind a Portal tunnel.",
+  "author": {
+    "name": "gosuda",
+    "url": "https://github.com/gosuda"
+  },
+  "homepage": "https://github.com/gosuda/oh-my-portal",
+  "repository": "https://github.com/gosuda/oh-my-portal",
+  "license": "MIT",
+  "keywords": ["omp", "oh-my-pi", "portal", "collab", "remote"]
+}
