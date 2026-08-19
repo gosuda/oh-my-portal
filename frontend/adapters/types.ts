@@ -16,6 +16,8 @@ export interface AgentEvent {
     | "command_output"
     | "model_list"
     | "subagent_update"
+    | "subagent_lifecycle"
+    | "subagent_transcript"
     | "cost_update"
     | "prompt_error"
     | "notice";
@@ -28,7 +30,17 @@ export interface AgentEvent {
   thinkingLevel?: string;
   models?: Array<{ provider: string; id: string }>;
   subagents?: SubagentProgress[];
+  subagentId?: string;
+  status?: string;
+  sessionFile?: string;
+  transcript?: SubagentMessage[];
+  nextByte?: number;
   cost?: number;
+}
+
+export interface SubagentMessage {
+  role: string;
+  content?: Array<{ type?: string; text?: string; name?: string; thinking?: string }>;
 }
 
 export interface SubagentProgress {
@@ -53,12 +65,13 @@ export interface AgentAdapter {
   start(): void;
   /** Send a prompt (or slash command) to the agent. */
   prompt(text: string): void;
-  /** Abort the current agent turn. */
+  /** List available models (optional — adapters without it skip the picker). */
+  listModels?(): void;
+  /** Fetch a subagent transcript (optional). */
+  getSubagentMessages?(subagentId: string, sessionFile: string, fromByte?: number): void;
   abort(): void;
   /** Request current state (model, context usage). */
   pollState(): void;
-  /** List available models (optional — adapters without it skip the picker). */
-  listModels?(): void;
   onEvent(callback: (event: AgentEvent) => void): void;
   /** Clean shutdown. */
   stop(): void;

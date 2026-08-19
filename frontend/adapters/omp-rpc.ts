@@ -1,7 +1,7 @@
 // OMP RPC adapter — bridges omp --mode rpc JSON-RPC to universal AgentEvents.
 // This is the reference adapter; others follow the same interface.
 
-import type { AgentAdapter, AgentEvent, SubagentProgress } from "./types";
+import type { AgentAdapter, AgentEvent, SubagentProgress, SubagentMessage } from "./types";
 import { spawn, type ChildProcess } from "child_process";
 
 export class OmpRpcAdapter implements AgentAdapter {
@@ -13,6 +13,7 @@ export class OmpRpcAdapter implements AgentAdapter {
   private callback: ((e: AgentEvent) => void) | null = null;
   private command: string;
   private sessionCost = 0;
+  private pendingTranscript = new Map<string, string>(); // reqId → subagentId
 
   constructor(command?: string) {
     this.command = command ?? "omp";
@@ -68,7 +69,12 @@ export class OmpRpcAdapter implements AgentAdapter {
   listModels() {
     this.write({ id: `m-${Date.now()}`, type: "get_available_models" });
   }
-  
+  getSubagentMessages(subagentId: string, sessionFile: string, fromByte = 0) {
+    const id = `gm-${Date.now()}`;
+    this.pendingTranscript.set(id, subagentId);
+    this.write({ id, type: "get_subagent_messages", subagentId, sessionFile, fromByte });
+  }
+
   stop() {
     this.proc?.kill();
     this.proc = null;
@@ -117,6 +123,8 @@ export class OmpRpcAdapter implements AgentAdapter {
     switch (m.type) {
       case "ready":
         this.emit({ type: "agent_ready" });
+        // Stream subagent lifecycle/progress events (drives the Agent Hub).
+        this.write({ id: `sub-${Date.now()}`, type: "set_subagent_subscription", level: "progress" });
         setTimeout(() => this.pollState(), 300);
         break;
 
@@ -163,6 +171,30 @@ export class OmpRpcAdapter implements AgentAdapter {
         break;
       }
 
+      case "subagent_lifecycle": {
+        // payload: {id, agent, status, sessionFile, …}
+        const p = (m as { payload?: Record<string, unknown> }).payload;
+        if (p) {
+          this.emit({
+            type: "subagent_lifecycle",
+            subagentId: String(p.id ?? ""),
+            status: String(p.status ?? ""),
+            name: p.agent ? String(p.agent) : undefined,
+            sessionFile: p.sessionFile ? String(p.sessionFile) : undefined,
+          });
+        }
+        break;
+      }
+
+      case "subagent_progress": {
+        // payload.progress is one agent's progress entry (same shape as
+        // tool_execution_update items)
+        const p = (m as { payload?: { progress?: unknown } }).payload?.progress;
+        if (p && typeof p === "object") {
+          this.emit({ type: "subagent_update", subagents: [p as SubagentProgress] });
+        }
+        break;
+      }
       case "tool_execution_end":
         this.emit({
           type: "tool_end",
@@ -205,9 +237,19 @@ export class OmpRpcAdapter implements AgentAdapter {
               thinkingLevel: d.thinkingLevel,
             } as AgentEvent);
           }
-        } else if (m.command === "get_available_models" && m.success) {
-          const d = m.data as { models?: Array<{ provider: string; id: string }> } | undefined;
-          this.emit({ type: "model_list", models: d?.models || [] } as AgentEvent & { models: unknown[] });
+        } else if (m.command === "get_subagent_messages" && m.success) {
+          const reqId = (m as { id?: string }).id;
+          const subagentId = reqId ? this.pendingTranscript.get(reqId) : undefined;
+          if (reqId) this.pendingTranscript.delete(reqId);
+          const d = m.data as { messages?: unknown[]; nextByte?: number } | undefined;
+          if (d?.messages) {
+            this.emit({
+              type: "subagent_transcript",
+              subagentId,
+              transcript: d.messages as SubagentMessage[],
+              nextByte: d.nextByte,
+            } as AgentEvent);
+          }
         }
         break;
 

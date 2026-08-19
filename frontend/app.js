@@ -284,18 +284,36 @@ function loadHistory(messages) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-// ── 7. Agent Hub (R14) ──────────────────────────────────────────────
+// ── 7. Agent Hub (R14 + transcripts) ────────────────────────────────
+
+let hubView = { mode: 'list', agentId: null };  // list | transcript
+let sessionFiles = new Map();                   // subagentId → sessionFile
+let hubTranscripts = new Map();                 // subagentId → messages[]
 
 function toggleHub() {
   hubEl.classList.toggle('open');
   hubOverlay.classList.toggle('open');
 }
 
+function closeHub() {
+  hubEl.classList.remove('open');
+  hubOverlay.classList.remove('open');
+}
+
+// Merge one progress entry into hubAgents (upsert by id).
+function upsertSubagent(entry) {
+  const i = hubAgents.findIndex(a => a.id === entry.id);
+  if (i >= 0) hubAgents[i] = { ...hubAgents[i], ...entry };
+  else hubAgents.push(entry);
+}
+
 function renderHub() {
-  const running = hubAgents.filter(a => a.status === 'running' || a.status === 'pending').length;
+  const running = hubAgents.filter(a => a.status === 'running' || a.status === 'pending' || a.status === 'started').length;
   hubBtn.style.display = hubAgents.length ? '' : 'none';
   hubCount.textContent = hubAgents.length;
   hubBtn.classList.toggle('active', running > 0);
+
+  if (hubView.mode === 'transcript') { renderTranscriptView(); return; }
 
   if (!hubAgents.length) {
     hubList.innerHTML = '<div class="hub-empty">no subagents</div>';
@@ -314,6 +332,7 @@ function renderHub() {
       dur,
       cost,
     ].filter(Boolean).join(' · ');
+    const canOpen = sessionFiles.has(a.id);
     card.innerHTML = `
       <div class="hc-top">
         <span class="hc-name">${esc(a.id)}</span>
@@ -324,9 +343,64 @@ function renderHub() {
         <span class="hc-stats">${esc(meta)}</span>
       </div>
       ${a.recentOutput && a.recentOutput.length ? `<div class="hc-out">${esc(a.recentOutput[a.recentOutput.length - 1]).slice(0, 200)}</div>` : ''}
+      ${canOpen ? '<button class="hc-open">▤ transcript</button>' : ''}
     `;
+    if (canOpen) {
+      card.querySelector('.hc-open').onclick = (e) => {
+        e.stopPropagation();
+        openTranscript(a.id);
+      };
+    }
     hubList.appendChild(card);
   }
+}
+
+function openTranscript(agentId) {
+  hubView = { mode: 'transcript', agentId };
+  hubList.innerHTML = '<div class="hub-empty">loading…</div>';
+  if (ws && ws.readyState === 1 && activeSessionId) {
+    ws.send(JSON.stringify({
+      type: 'get_subagent_messages',
+      sessionId: activeSessionId,
+      subagentId: agentId,
+      sessionFile: sessionFiles.get(agentId),
+      fromByte: 0,
+    }));
+  }
+}
+
+function renderTranscriptView() {
+  const agentId = hubView.agentId;
+  hubList.innerHTML = `
+    <div class="hub-back" onclick="backToHubList()">← agents</div>
+    <div class="tr-title">${esc(agentId)}</div>
+    <div id="trBody" class="tr-body"></div>`;
+  const body = document.getElementById('trBody');
+  const msgs = hubTranscripts.get(agentId) || [];
+  if (!msgs.length) {
+    body.innerHTML = '<div class="hub-empty">no transcript</div>';
+    return;
+  }
+  for (const m of msgs) {
+    const el = document.createElement('div');
+    el.className = 'tr-msg ' + m.role;
+    const blocks = Array.isArray(m.content) ? m.content : [];
+    let html = '';
+    for (const b of blocks) {
+      if (b.type === 'text' && b.text) html += md(b.text);
+      else if (b.type === 'toolCall') html += `<div class="tr-tool">⚙ ${esc(b.name || 'tool')}</div>`;
+      else if (b.type === 'thinking' && b.thinking) html += `<div class="tr-think">${esc(b.thinking.slice(0, 300))}</div>`;
+    }
+    if (!html && typeof m.content === 'string') html = md(m.content);
+    el.innerHTML = html || `<span class="tr-dim">(${esc(m.role)})</span>`;
+    body.appendChild(el);
+  }
+  body.scrollTop = body.scrollHeight;
+}
+
+function backToHubList() {
+  hubView = { mode: 'list', agentId: null };
+  renderHub();
 }
 
 // ── 8. Stream state (R13, R16) ───────────────────────────────────────
@@ -607,10 +681,19 @@ function handleEvent(msg) {
       renderModelPicker(modelCache);
       break;
 
-    // Agent Hub
+    // Agent Hub — progress arrays upsert by id (finished agents stay visible)
     case 'subagent_update':
-      hubAgents = msg.subagents || [];
+      for (const entry of (msg.subagents || [])) upsertSubagent(entry);
       renderHub();
+      break;
+    case 'subagent_lifecycle':
+      if (msg.sessionFile) sessionFiles.set(msg.subagentId, msg.sessionFile);
+      upsertSubagent({ id: msg.subagentId, status: msg.status, agent: msg.name || msg.subagentId });
+      renderHub();
+      break;
+    case 'subagent_transcript':
+      hubTranscripts.set(msg.subagentId ?? hubView.agentId, msg.transcript || []);
+      if (hubView.mode === 'transcript') renderTranscriptView();
       break;
 
     // Failures

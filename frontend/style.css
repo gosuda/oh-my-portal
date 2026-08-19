@@ -150,7 +150,23 @@ main::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 .hub-card.st-failed { border-color:#ef5350; }
 .hc-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
 .hc-name { font-weight:600; font-size:14px; }
-.hc-status { font-size:10px; text-transform:uppercase; letter-spacing:.5px; color:var(--dim); border:1px solid var(--border); border-radius:4px; padding:1px 6px; }
+.hc-out { font-size:12px; color:var(--text); background:var(--surface); border-radius:6px; padding:6px 8px; margin-top:4px; white-space:pre-wrap; max-height:80px; overflow:hidden; font-family:'SF Mono','Fira Code','Consolas',monospace; }
+.hc-open { margin-top:6px; background:none; border:1px solid var(--border); border-radius:6px; color:var(--accent); font-size:11px; padding:3px 10px; cursor:pointer; font-family:inherit; }
+.hc-open:hover { border-color:var(--accent); }
+
+/* Subagent transcript view */
+.hub-back { font-size:13px; color:var(--accent); cursor:pointer; padding:4px 0 8px; }
+.tr-title { font-weight:600; font-size:14px; margin-bottom:8px; }
+.tr-body { display:flex; flex-direction:column; gap:8px; }
+.tr-msg { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font-size:13px; }
+.tr-msg.user { border-color:var(--accent); }
+.tr-msg.assistant { border-color:var(--border); }
+.tr-msg p { margin:0 0 6px; }
+.tr-msg p:last-child { margin-bottom:0; }
+.tr-msg pre { overflow-x:auto; }
+.tr-tool { font-size:11px; color:var(--dim); margin:4px 0; }
+.tr-think { font-size:11px; color:var(--dim); font-style:italic; border-left:2px solid var(--border); padding-left:8px; margin:4px 0; }
+.tr-dim { color:var(--dim); font-size:11px; }
 .st-running .hc-status { color:var(--accent); border-color:var(--accent); }
 .st-completed .hc-status { color:var(--success); border-color:var(--success); }
 .st-failed .hc-status { color:#ef5350; border-color:#ef5350; }

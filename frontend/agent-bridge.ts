@@ -201,6 +201,15 @@ Bun.serve({
         if (session) session.adapter.listModels?.();
       }
 
+      else if (type === "get_subagent_messages" && typeof msg.sessionId === "string") {
+        const session = sessions.get(msg.sessionId);
+        session?.adapter.getSubagentMessages?.(
+          String(msg.subagentId || ""),
+          String(msg.sessionFile || ""),
+          typeof msg.fromByte === "number" ? msg.fromByte : 0,
+        );
+      }
+
       else if (type === "abort" && ws.activeSession) {
         const session = sessions.get(ws.activeSession);
         if (session) session.adapter.abort();
