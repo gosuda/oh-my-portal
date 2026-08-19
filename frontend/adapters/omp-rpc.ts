@@ -8,7 +8,8 @@ export class OmpRpcAdapter implements AgentAdapter {
   readonly name = "omp-rpc";
   private proc: ChildProcess | null = null;
   private stdin: NodeJS.WritableStream | null = null;
-  private buffer = "";
+  private buffer: string;
+  private stderrBuf = "";
   private callback: ((e: AgentEvent) => void) | null = null;
   private command: string;
 
@@ -27,11 +28,27 @@ export class OmpRpcAdapter implements AgentAdapter {
       shell: true,
     });
     this.stdin = this.proc.stdin;
+    this.buffer = "";
+    this.stderrBuf = "";
     this.proc.stdout!.on("data", (chunk: Buffer) => this.onStdout(chunk));
+    this.proc.stderr!.on("data", (chunk: Buffer) => {
+      this.stderrBuf += chunk.toString("utf-8");
+      // Cap to avoid unbounded growth on chatty stderr
+      if (this.stderrBuf.length > 8192) this.stderrBuf = this.stderrBuf.slice(-8192);
+    });
     this.proc.on("exit", (code) => {
+      const err = this.stderrBuf.trim();
       this.proc = null;
       this.stdin = null;
+      // Non-zero exit with stderr → surface the agent's own guidance
+      // (e.g. "No models available. Use /login or set an API key…")
+      if (code !== 0 && code !== null && err) {
+        this.emit({ type: "agent_error", error: err });
+      }
       this.emit({ type: "agent_exited", code: code ?? 0 });
+    });
+    this.proc.on("error", (e) => {
+      this.emit({ type: "agent_error", error: `failed to start agent: ${e.message}` });
     });
   }
 

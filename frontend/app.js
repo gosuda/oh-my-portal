@@ -314,8 +314,18 @@ function handleEvent(msg) {
       renderModelPicker(msg.models || []);
       break;
     }
+    case 'agent_error': {
+      agentEl = null; textEl = null; thinkEl = null; pendingMd = '';
+      const el = document.createElement('div');
+      el.className = 'msg agent-error';
+      el.innerHTML = `<div class="err-label">⚠ agent error</div>${md(msg.error || 'unknown error')}`;
+      chat.appendChild(el);
+      scrollBottom();
+      setStream(false);
+      break;
+    }
     case 'agent_exited':
-      renderNotice('agent exited');
+      if (!document.querySelector('.msg.agent-error')) renderNotice('agent exited');
       setStream(false);
       break;
     case 'state_update': {

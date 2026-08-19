@@ -11,6 +11,7 @@ export interface AgentEvent {
     | "agent_end"
     | "agent_ready"
     | "agent_exited"
+    | "agent_error"
     | "state_update"
     | "command_output"
     | "command_result"
