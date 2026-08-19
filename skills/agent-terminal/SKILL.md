@@ -23,7 +23,7 @@ For OMP, check first whether the user wants native collab instead (`oh-my-omp` p
 
 - **Never publish an unauthenticated ttyd.** A terminal is shell-equivalent: the agent can run commands on this machine. Always pass `-c <user>:<password>` with a long random password, and bind to loopback only (`ttyd` listens on all interfaces by default — check the invocation).
 - Loopback bind + Portal is the only supported topology. Do not expose ttyd directly.
-- The tunnel hostname is publicly listed on participating relays unless the user asks for `--hide`.
+- The tunnel hostname is publicly listed on participating relays by default. For a personal access endpoint, propose `--hide` up front — discovery has no value here. If the user declines credentials despite the risk statement, the exposure floor is `--hide` plus a hard-to-guess `--name` (name guessing is the practical scan vector), and the hand-off must state that this is discoverability reduction, not access control.
 - Tell the user plainly what they are granting: whoever holds the URL **and** the password gets full control of the agent session, including its ability to run commands. For pay-per-access, an x402 gated route is available; never enable payment implicitly.
 
 ## Workflow

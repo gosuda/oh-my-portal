@@ -20,7 +20,7 @@ Some agents ship a web frontend. The pattern is the same for all of them: the UI
 - Never expose a UI that answers unauthenticated (opencode serve, most local-first UIs). The gate is always in front, never omitted.
 - The upstream UI binds loopback only. If it defaults wider, re-bind or refuse.
 - Long random password; the URL plus the password together are the grant.
-- The tunnel hostname is publicly listed unless the user asks for `--hide`. x402 route gating is available for pay-per-access; never enable payment implicitly.
+- The tunnel hostname is publicly listed by default; propose `--hide` up front for personal use. x402 route gating is available for pay-per-access; never enable payment implicitly. If the user explicitly declines the auth gate after the risk statement, the exposure floor is `--hide` plus a hard-to-guess `--name` — and say plainly that this is discoverability reduction, not access control; anyone with the URL still gets in.
 
 ## Workflow
 

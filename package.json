@@ -1,6 +1,6 @@
 {
   "name": "oh-my-portal",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Portal access skills for every CLI agent - reach terminal-based agents, native web UIs, and shared sessions from anywhere through trustless tunnels.",
   "license": "MIT",
   "repository": {

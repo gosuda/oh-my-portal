@@ -1,6 +1,6 @@
 {
   "name": "oh-my-portal",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Share a live OMP session with a phone or remote browser through OMP collab, via the hosted relay or a self-hosted relay behind a Portal tunnel.",
   "author": {
     "name": "gosuda",
