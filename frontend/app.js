@@ -251,7 +251,25 @@ pickerEl.id = 'picker';
 pickerEl.className = 'picker-list';
 document.querySelector('footer').appendChild(pickerEl);
 
-function hidePicker() { pickerEl.classList.remove('visible'); pickerEl.innerHTML = ''; }
+let pickerMode = null;          // 'model' | 'thinking' | null
+let modelCache = null;          // last model_list payload
+function hidePicker() { pickerMode = null; pickerEl.classList.remove('visible'); pickerEl.innerHTML = ''; }
+// Typing a bare picker command opens the dropdown immediately —
+// no Send press needed. Returns true when the value is a picker trigger.
+function maybeShowPicker(value) {
+  const t = value.trim();
+  if (t !== '/model' && t !== '/thinking') return false;
+  pickerMode = t === '/model' ? 'model' : 'thinking';
+  if (pickerMode === 'model') {
+    if (modelCache) renderModelPicker(modelCache);
+    if (ws && ws.readyState === 1 && activeSessionId) {
+      ws.send(JSON.stringify({ type: 'get_models', sessionId: activeSessionId }));
+    }
+  } else {
+    renderThinkingPicker();
+  }
+  return true;
+}
 
 function showPicker(title, items, onPick) {
   if (!items.length) return;
@@ -264,7 +282,7 @@ function showPicker(title, items, onPick) {
     const item = document.createElement('button');
     item.className = 'model-item' + (it.current ? ' current' : '');
     item.innerHTML = it.html;
-    item.onclick = () => { hidePicker(); onPick(it.value); };
+    item.onclick = () => { hidePicker(); input.value = ''; input.style.height = 'auto'; onPick(it.value); };
     list.appendChild(item);
   }
   pickerEl.appendChild(list);
@@ -410,7 +428,8 @@ function handleEvent(msg) {
       renderCmdOutput(msg.content || msg.output || '');
       break;
     case 'model_list': {
-      renderModelPicker(msg.models || []);
+      modelCache = msg.models || [];
+      renderModelPicker(modelCache);
       break;
     }
     case 'subagent_update':
@@ -493,6 +512,11 @@ function connect() {
 function send() {
   const t = input.value.trim();
   if (!t || !ws || ws.readyState !== 1 || !activeSessionId) return;
+  // Picker triggers: the dropdown IS the interface — don't send the raw command.
+  if (t === '/model' || t === '/thinking') {
+    maybeShowPicker(t);  // re-open if closed
+    return;
+  }
   input.value = '';
   input.style.height = 'auto';
   userMsg(t, nick);
@@ -502,14 +526,6 @@ function send() {
     sessionId: activeSessionId,
     nickname: nick,
   }));
-  // Bare /model → request model list for picker
-  if (t === '/model') {
-    ws.send(JSON.stringify({ type: 'get_models', sessionId: activeSessionId }));
-  }
-  // Bare /thinking → level picker from last known state
-  if (t === '/thinking') {
-    renderThinkingPicker();
-  }
 }
 
 function stop() {
@@ -619,6 +635,8 @@ input.addEventListener('keydown', (e) => {
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  if (maybeShowPicker(input.value)) return;
+  hidePicker();
   showCmds(input.value);
 });
 
