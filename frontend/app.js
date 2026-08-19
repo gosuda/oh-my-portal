@@ -30,6 +30,8 @@ function saveNick(v) {
   localStorage.setItem('chat-nick', nick);
 }
 
+let promptWatchdog = null;
+
 // ── Password gate ─────────────────────────────────────────────────────
 function unlock() {
   const el = document.getElementById('gateInput');
@@ -288,12 +290,10 @@ function renderModelPicker(models) {
 }
 function setStream(on) {
   streaming = on;
-  sendBtn.style.display = on ? 'none' : '';
-  stopBtn.style.display = on ? '' : 'none';
+  sendBtn.style.display = on ? 'none' : 'inline-block';
+  stopBtn.style.display = on ? 'inline-block' : 'none';
   if (!on) { agentEl = null; textEl = null; thinkEl = null; }
 }
-
-// ── Event dispatch ────────────────────────────────────────────────────
 function handleEvent(msg) {
   switch (msg.type) {
     case 'session_list':
@@ -346,7 +346,14 @@ function handleEvent(msg) {
       }
       break;
     case 'prompt_accepted':
+      setStream(true);
+      // Some session-local commands (e.g. /goal show) are acknowledged but
+      // never start the agent and produce no output — unstick after a beat.
+      clearTimeout(promptWatchdog);
+      promptWatchdog = setTimeout(() => { if (streaming) setStream(false); }, 3000);
+      break;
     case 'agent_start':
+      clearTimeout(promptWatchdog);
       setStream(true);
       break;
     case 'prompt_error':
@@ -460,13 +467,20 @@ function stop() {
 
 // ── Command autocomplete ──────────────────────────────────────────────
 const COMMANDS = [
-  { cmd: '/model',    desc: 'Show or switch the current model' },
-  { cmd: '/compact',  desc: 'Compress the conversation context' },
-  { cmd: '/thinking', desc: 'Set thinking level (off/low/medium/high/max)' },
-  { cmd: '/help',     desc: 'Show available commands' },
-  { cmd: '/dump',     desc: 'Dump the full conversation' },
-  { cmd: '/export',   desc: 'Export the conversation' },
-  { cmd: '/exit',     desc: 'Leave the session' },
+  { cmd: '/model',       desc: 'Show or switch the current model' },
+  { cmd: '/goal',        desc: 'Toggle goal mode (persistent autonomous objective)' },
+  { cmd: '/goal set',    desc: 'Set or replace the goal' },
+  { cmd: '/goal show',   desc: 'Show current goal details' },
+  { cmd: '/goal pause',  desc: 'Pause the current goal' },
+  { cmd: '/goal resume', desc: 'Resume a paused goal' },
+  { cmd: '/goal drop',   desc: 'Drop the current goal' },
+  { cmd: '/goal budget', desc: 'Adjust the token budget (<N|off>)' },
+  { cmd: '/compact',     desc: 'Compress the conversation context' },
+  { cmd: '/thinking',    desc: 'Set thinking level (off/low/medium/high/max)' },
+  { cmd: '/help',        desc: 'Show available commands' },
+  { cmd: '/dump',        desc: 'Dump the full conversation' },
+  { cmd: '/export',      desc: 'Export the conversation' },
+  { cmd: '/exit',        desc: 'Leave the session' },
 ];
 
 const cmdList = document.getElementById('cmdList');
