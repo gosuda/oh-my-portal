@@ -223,16 +223,97 @@ function stop() {
   }
 }
 
+// ── Command autocomplete ──────────────────────────────────────────────
+
+const COMMANDS = [
+  { cmd: '/model',    desc: 'Show or switch the current model' },
+  { cmd: '/compact',  desc: 'Compress the conversation context' },
+  { cmd: '/thinking', desc: 'Set thinking level (off/low/medium/high/max)' },
+  { cmd: '/help',     desc: 'Show available commands' },
+  { cmd: '/dump',     desc: 'Dump the full conversation' },
+  { cmd: '/export',   desc: 'Export the conversation' },
+  { cmd: '/exit',     desc: 'Leave the session' },
+];
+
+const cmdList = document.getElementById('cmdList');
+let cmdActiveIndex = -1;
+
+function showCmds(text) {
+  if (!text.startsWith('/') || text.includes(' ')) {
+    cmdList.classList.remove('visible');
+    cmdList.innerHTML = '';
+    cmdActiveIndex = -1;
+    return;
+  }
+
+  const q = text.slice(1).toLowerCase();
+  const matches = COMMANDS.filter(c => c.cmd.slice(1).toLowerCase().startsWith(q));
+  if (matches.length === 0) {
+    cmdList.classList.remove('visible');
+    cmdList.innerHTML = '';
+    return;
+  }
+
+  cmdList.innerHTML = '';
+  for (const m of matches) {
+    const el = document.createElement('div');
+    el.className = 'cmd-item';
+    el.innerHTML = `<span class="cmd">${esc(m.cmd)}</span><span class="desc">${esc(m.desc)}</span>`;
+    el.onclick = () => {
+      input.value = m.cmd + ' ';
+      input.focus();
+      hideCmds();
+    };
+    cmdList.appendChild(el);
+  }
+  cmdList.classList.add('visible');
+}
+
+function hideCmds() {
+  cmdList.classList.remove('visible');
+  cmdActiveIndex = -1;
+}
+
+function cmdNav(dir) {
+  const items = cmdList.querySelectorAll('.cmd-item');
+  if (!items.length) return;
+  cmdActiveIndex = Math.max(0, Math.min(items.length - 1, cmdActiveIndex + dir));
+  items.forEach((el, i) => el.classList.toggle('active', i === cmdActiveIndex));
+  items[cmdActiveIndex]?.scrollIntoView({ block: 'nearest' });
+}
+
+function cmdAccept() {
+  const items = cmdList.querySelectorAll('.cmd-item');
+  const target = items[cmdActiveIndex] || items[0];
+  if (target) target.click();
+}
+
 input.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    send();
+    if (cmdList.classList.contains('visible')) {
+      cmdAccept();
+    } else {
+      send();
+    }
+  } else if (e.key === 'ArrowUp' && cmdList.classList.contains('visible')) {
+    e.preventDefault();
+    cmdNav(-1);
+  } else if (e.key === 'ArrowDown' && cmdList.classList.contains('visible')) {
+    e.preventDefault();
+    cmdNav(1);
+  } else if (e.key === 'Escape') {
+    hideCmds();
+  } else if (e.key === 'Tab' && cmdList.classList.contains('visible')) {
+    e.preventDefault();
+    cmdAccept();
   }
 });
 
 input.addEventListener('input', () => {
   input.style.height = 'auto';
   input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+  showCmds(input.value);
 });
 
 connect();
