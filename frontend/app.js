@@ -591,11 +591,12 @@ function showCmds(text) {
     el.onclick = () => {
       input.value = m.cmd + ' ';
       input.focus();
-      hideCmds();
+      hideAutocomplete();
       input.dispatchEvent(new Event('input', { bubbles: true }));
     };
     cmdList.appendChild(el);
   }
+  cmdList.classList.add('visible');
   cmdActiveIndex = -1;
 }
 
@@ -629,7 +630,7 @@ input.addEventListener('keydown', (e) => {
     e.preventDefault();
     cmdNav(1);
   } else if (e.key === 'Escape') {
-    hideCmds();
+    hideAutocomplete();
   } else if (e.key === 'Tab' && cmdList.classList.contains('visible')) {
     e.preventDefault();
     cmdAccept();

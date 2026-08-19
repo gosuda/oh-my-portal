@@ -132,10 +132,17 @@ Bun.serve({
       ws.activeSession = null;
       console.log(`[bridge] client connected (${clients.size})`);
 
-      // Auto-create session on connect
-      const session = createSession();
+      // Reconnect (page refresh) → reattach to the most recent session;
+      // only create one when none exist.
+      const latest = Array.from(sessions.values())
+        .sort((a, b) => b.createdAt - a.createdAt)[0];
+      const session = latest ?? createSession();
       ws.activeSession = session.id;
       ws.send(JSON.stringify({ type: "session_switched", sessionId: session.id }));
+      if (latest) {
+        ws.send(JSON.stringify({ type: "session_history", messages: session.messages }));
+        session.adapter.pollState();
+      }
       broadcastAll({ type: "session_list", sessions: sessionList() });
     },
 
