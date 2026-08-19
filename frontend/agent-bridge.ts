@@ -3,13 +3,18 @@
 // Serves the frontend and bridges agent protocols to universal events.
 //
 // Usage:
-//   bun agent-bridge.ts                           → OMP RPC adapter (default)
-//   bun agent-bridge.ts --agent omp               → explicit OMP
-//   bun agent-bridge.ts --agent claude            → simple adapter (claude -p)
+//   bun agent-bridge.ts                           → OMP RPC (default)
+//   bun agent-bridge.ts --agent claude            → Claude Code SDK
+//   bun agent-bridge.ts --agent codex             → OpenAI Codex SDK
+//   bun agent-bridge.ts --agent opencode          → opencode serve API
+//   bun agent-bridge.ts --agent <any-command>     → subprocess fallback
 //   bun agent-bridge.ts --port 7683               → custom port
 
 import { AgentAdapter, AgentEvent } from "./adapters/types";
 import { OmpRpcAdapter } from "./adapters/omp-rpc";
+import { ClaudeCodeAdapter } from "./adapters/claude-code";
+import { CodexAdapter } from "./adapters/codex";
+import { OpencodeAdapter } from "./adapters/opencode";
 import { SimpleAdapter } from "./adapters/simple";
 
 // ── CLI args ─────────────────────────────────────────────────────────
@@ -27,6 +32,15 @@ const PORT = parseInt(flag("port", "7683"), 10);
 function createAdapter(agentName: string): AgentAdapter {
   if (agentName === "omp" || agentName.startsWith("omp ")) {
     return new OmpRpcAdapter(agentName.split(" ")[0]);
+  }
+  if (agentName === "claude" || agentName === "claude-code") {
+    return new ClaudeCodeAdapter();
+  }
+  if (agentName === "codex" || agentName === "openai") {
+    return new CodexAdapter();
+  }
+  if (agentName === "opencode") {
+    return new OpencodeAdapter();
   }
   // Any other agent: universal subprocess fallback
   return new SimpleAdapter(agentName);
