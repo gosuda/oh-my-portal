@@ -481,18 +481,34 @@ pickerEl.id = 'picker';
 pickerEl.className = 'picker-list';
 document.querySelector('footer').appendChild(pickerEl);
 
-let pickerMode = null; // 'model' | 'thinking' | null
+let pickerMode = null;     // 'model' | 'thinking' | null
+let pickerActiveIndex = -1;
 
 function hidePicker() {
   pickerMode = null;
+  pickerActiveIndex = -1;
   pickerEl.classList.remove('visible');
   pickerEl.innerHTML = '';
+}
+
+function pickerNav(dir) {
+  const items = pickerEl.querySelectorAll('.model-item');
+  if (!items.length) return;
+  pickerActiveIndex = Math.max(0, Math.min(items.length - 1, pickerActiveIndex + dir));
+  items.forEach((el, i) => el.classList.toggle('active', i === pickerActiveIndex));
+  items[pickerActiveIndex]?.scrollIntoView({ block: 'nearest' });
+}
+
+function pickerAccept() {
+  const items = pickerEl.querySelectorAll('.model-item');
+  (items[pickerActiveIndex] || items[0])?.click();
 }
 
 function showPicker(title, items, onPick) {
   if (!items.length) return;
   resetAgent();
   hideAutocomplete();
+  pickerActiveIndex = -1;
   pickerEl.innerHTML = `<div class="picker-title">${esc(title)}</div>`;
   const list = document.createElement('div');
   list.className = 'model-list';
@@ -875,22 +891,28 @@ function stop() {
 // ── 14. Input wiring ─────────────────────────────────────────────────
 
 input.addEventListener('keydown', (e) => {
+  const pickerOpen = pickerEl.classList.contains('visible');
+  const cmdOpen = cmdList.classList.contains('visible');
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    if (cmdList.classList.contains('visible')) cmdAccept();
+    if (pickerOpen) pickerAccept();
+    else if (cmdOpen) cmdAccept();
     else send();
-  } else if (e.key === 'ArrowUp' && cmdList.classList.contains('visible')) {
+  } else if (e.key === 'ArrowUp' && (pickerOpen || cmdOpen)) {
     e.preventDefault();
-    cmdNav(-1);
-  } else if (e.key === 'ArrowDown' && cmdList.classList.contains('visible')) {
+    if (pickerOpen) pickerNav(-1);
+    else cmdNav(-1);
+  } else if (e.key === 'ArrowDown' && (pickerOpen || cmdOpen)) {
     e.preventDefault();
-    cmdNav(1);
+    if (pickerOpen) pickerNav(1);
+    else cmdNav(1);
   } else if (e.key === 'Escape') {
     hideAutocomplete();
     hidePicker();
-  } else if (e.key === 'Tab' && cmdList.classList.contains('visible')) {
+  } else if (e.key === 'Tab' && (pickerOpen || cmdOpen)) {
     e.preventDefault();
-    cmdAccept();
+    if (pickerOpen) pickerAccept();
+    else cmdAccept();
   }
 });
 
