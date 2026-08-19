@@ -31,7 +31,12 @@ function md(src) {
   text = text.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
 
   // Links
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => {
+    // Scheme whitelist — agent output must not mint javascript: links
+    const u = url.trim();
+    const safe = /^(https?:|mailto:|#|\/)/i.test(u) ? u : '#';
+    return `<a href="${safe}" target="_blank" rel="noopener">${label}</a>`;
+  });
 
   // Process lines (headers, lists, paragraphs)
   const lines = text.split('\n');

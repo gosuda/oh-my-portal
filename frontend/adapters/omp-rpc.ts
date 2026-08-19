@@ -187,6 +187,12 @@ export class OmpRpcAdapter implements AgentAdapter {
         break;
 
       case "tool_execution_update": {
+        // tool_execution_start carries no input — the real args arrive
+        // on the first update event. Forward them to fill the card.
+        const args = (m as { args?: Record<string, unknown> }).args;
+        if (args && Object.keys(args).length > 0) {
+          this.emit({ type: "tool_params", name: m.toolName || "tool", params: args });
+        }
         // The `task` tool streams subagent progress via partialResult.details.progress
         const progress = m.partialResult?.details?.progress;
         if (Array.isArray(progress) && progress.length > 0) {

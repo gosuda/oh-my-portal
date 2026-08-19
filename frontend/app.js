@@ -615,6 +615,13 @@ function handleEvent(msg) {
     case 'session_switched':
       activeSessionId = msg.sessionId;
       clearChat();
+      // Per-session state from the previous session must not leak in
+      hubAgents = [];
+      hubView = { mode: 'list', agentId: null };
+      sessionFiles.clear();
+      hubTranscripts.clear();
+      hubBtn.style.display = 'none';
+      lastState = null;
       break;
     case 'session_history':
       loadHistory(msg.messages || []);
@@ -647,11 +654,24 @@ function handleEvent(msg) {
       finishToolCard(msg.result);
       break;
 
-    // Turn lifecycle
-    case 'prompt_accepted':
-      setStream(true);
-      armPromptWatchdog();
+    case 'tool_params': {
+      // Args arrive after the card was created (tool_execution_update) —
+      // fill the last card's params section.
+      const cards = chat.querySelectorAll('.tool');
+      const last = cards[cards.length - 1];
+      if (last && msg.params) {
+        let pre = last.querySelector('.tool-params pre');
+        if (!pre) {
+          const box = document.createElement('div');
+          box.className = 'tool-params';
+          box.innerHTML = '<span class="lbl">params</span><pre></pre>';
+          last.querySelector('.bd').prepend(box);
+          pre = box.querySelector('pre');
+        }
+        pre.textContent = JSON.stringify(msg.params, null, 2);
+      }
       break;
+    }
     case 'agent_start':
       cancelPromptWatchdog();
       setStream(true);

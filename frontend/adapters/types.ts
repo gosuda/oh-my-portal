@@ -6,6 +6,7 @@ export interface AgentEvent {
     | "text_delta"
     | "thinking_delta"
     | "tool_start"
+    | "tool_params"
     | "tool_end"
     | "agent_start"
     | "agent_end"

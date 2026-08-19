@@ -51,7 +51,20 @@ function createSession(): Session {
   const id = `s${++sessionCounter}_${Date.now().toString(36)}`;
   const adapter = createAdapter();
   const session: Session = { id, adapter, title: "New Chat", createdAt: Date.now(), messages: [] };
-  adapter.onEvent((event) => sendToSession(id, event));
+
+  // Record assistant turns so session switching and page refreshes replay
+  // the full conversation, not just the user's side.
+  let turnText = "";
+  adapter.onEvent((event) => {
+    if (event.type === "text_delta" && event.content) {
+      turnText += event.content;
+    } else if (event.type === "agent_end") {
+      if (turnText.trim()) session.messages.push({ role: "assistant", content: turnText });
+      turnText = "";
+    }
+    sendToSession(id, event);
+  });
+
   adapter.start();
   sessions.set(id, session);
   console.log(`[bridge] session ${id} created (${sessions.size} active)`);
