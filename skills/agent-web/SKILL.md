@@ -13,7 +13,7 @@ Some agents ship a web frontend. The pattern is the same for all of them: the UI
 - `opencode serve --port <n>` starts a headless server; `--hostname` **defaults to `127.0.0.1`** (loopback — keep it). Never pass `--mdns` (it binds `0.0.0.0`).
 - `GET /` serves the full OpenCode web UI — no separate client needed.
 - **The server has no built-in authentication**: API endpoints answer unauthenticated on loopback. Exposing it directly through a tunnel hands full agent control to anyone with the URL. The auth gate below is mandatory, not optional.
-- Verified chain: opencode (127.0.0.1:4096) → caddy basicauth (127.0.0.1:8080) → `portal expose` → public URL returns `401` without credentials and the web UI with them.
+- Verified chain: opencode (127.0.0.1:4096) → caddy basic_auth (127.0.0.1:8080) → `portal expose` → public URL returns `401` without credentials and the web UI with them.
 
 ## Hard rules
 

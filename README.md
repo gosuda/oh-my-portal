@@ -24,7 +24,7 @@ Only the host human mints collab links; the agent prepares infrastructure and ne
 
 ### agent-web (universal)
 
-Publish an agent's native web UI — `opencode serve` (verified end to end: loopback default, full web UI at `/`, **no built-in auth**) or self-hosted community UIs for Claude Code / Codex / Gemini — behind a mandatory authentication gate (caddy basicauth recipe included) and through a Portal tunnel. The skill encodes the verified failure mode: local-first UIs usually answer unauthenticated, so the gate is a hard rule, and verification requires `401` without credentials before hand-off.
+Publish an agent's native web UI — `opencode serve` (verified end to end: loopback default, full web UI at `/`, **no built-in auth**) or self-hosted community UIs for Claude Code / Codex / Gemini — behind a mandatory authentication gate (caddy basic_auth recipe included) and through a Portal tunnel. The skill encodes the verified failure mode: local-first UIs usually answer unauthenticated, so the gate is a hard rule, and verification requires `401` without credentials before hand-off.
 
 ### Planned
 
