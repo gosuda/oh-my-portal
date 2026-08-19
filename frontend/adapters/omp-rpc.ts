@@ -267,6 +267,9 @@ export class OmpRpcAdapter implements AgentAdapter {
               thinkingLevel: d.thinkingLevel,
             } as AgentEvent);
           }
+        } else if (m.command === "get_available_models" && m.success) {
+          const d = m.data as { models?: Array<{ provider: string; id: string }> } | undefined;
+          this.emit({ type: "model_list", models: d?.models || [] } as AgentEvent);
         } else if (m.command === "get_subagent_messages" && m.success) {
           const reqId = (m as { id?: string }).id;
           const subagentId = reqId ? this.pendingTranscript.get(reqId) : undefined;

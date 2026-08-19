@@ -48,7 +48,7 @@ export function runStaticChecks(): { passed: CheckResult[]; failed: CheckResult[
       "ws", "streaming", "activeSessionId", "reconnectTimer", "promptWatchdog",
       "lastState", "modelCache", "caps", "COMMANDS", "hubAgents", "agentEl",
       "textEl", "thinkEl", "pendingMd", "lastSessions", "nick", "hubView",
-      "sessionFiles", "hubTranscripts", "pickerMode", "cmdActiveIndex",
+      "sessionFiles", "hubTranscripts", "pickerMode", "cmdActiveIndex", "pickerActiveIndex",
     ];
     const problems: string[] = [];
     for (const name of canonical) {
@@ -120,6 +120,19 @@ export function runStaticChecks(): { passed: CheckResult[]; failed: CheckResult[
     const used = new Set([...css.matchAll(/var\(--([\w-]+)\)/g)].map(m => m[1]));
     const undeclared = [...used].filter(v => !declared.has(v));
     assert(undeclared.length === 0, `var() without :root declaration: [${undeclared}]`);
+  });
+
+  // C9: adapter request/response pairing — an edit once deleted the
+  // get_available_models response branch, leaving /model permanently
+  // empty. Every RPC command the adapter writes must have a matching
+  // `m.command === "…"` response branch (fire-and-forget verbs exempt).
+  run("rpc: adapter request verbs have response handlers", () => {
+    const src = file("adapters/omp-rpc.ts");
+    const fireAndForget = new Set(["abort", "set_subagent_subscription"]);
+    const written = new Set([...src.matchAll(/this\.write\(\{[^}]*type:\s*"([a-z_]+)"/gs)].map(m => m[1]));
+    const responded = new Set([...src.matchAll(/m\.command === "([a-z_]+)"/g)].map(m => m[1]));
+    const unanswered = [...written].filter(v => !responded.has(v) && !fireAndForget.has(v));
+    assert(unanswered.length === 0, `RPC requests with no response handler: [${unanswered}]`);
   });
 
   return { passed, failed };

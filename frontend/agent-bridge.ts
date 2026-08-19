@@ -230,6 +230,10 @@ Bun.serve({
           ws.send(JSON.stringify({ type: "session_switched", sessionId: session.id }));
           ws.send(JSON.stringify({ type: "session_history", messages: session.messages }));
           session.adapter.pollState();
+          // Re-broadcast so every client re-renders the sidebar — each
+          // highlights by its own activeSessionId. Without this the
+          // highlight stayed on the previously-created session.
+          broadcastAll({ type: "session_list", sessions: sessionList() });
         }
       }
 
