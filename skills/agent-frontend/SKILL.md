@@ -57,11 +57,8 @@ Files:
 
 - `bun --version` (the bridge is a Bun script)
 - An agent available: `omp --version` for the default, or the relevant SDK/API key for other adapters
-## Shared session behavior
 
-Each client connection gets its own auto-created session with an independent agent process. Sessions are listed in a sidebar (☰ toggle); users can create new ones, switch between them (loading history), and delete them. Session titles auto-populate from the first prompt (first 40 chars). Slash commands (`/model`, `/compact`, etc.) apply to the active session only. Multiple clients on the same session share context; each client's own session is private.
-
-## Hard rules
+### 2. Start the bridge
 
 ```sh
 cd <repo>/frontend
@@ -76,6 +73,8 @@ bun agent-bridge.ts --agent codex --port 7683     # OpenAI (OPENAI_API_KEY)
 bun agent-bridge.ts --agent opencode --port 7683  # opencode serve
 bun agent-bridge.ts --agent gemini --port 7683    # subprocess fallback
 ```
+
+Each client connection gets its own auto-created session with an independent agent process. Sessions are listed in a sidebar (☰ toggle); users can create new ones, switch between them (loading history), and delete them. Session titles auto-populate from the first prompt (first 40 chars). Slash commands (`/model`, `/compact`, etc.) apply to the active session only. Multiple clients on the same session share context; each client's own session is private.
 
 ### 3. Gate + publish
 
@@ -99,16 +98,15 @@ portal expose 127.0.0.1:8080 --name <hard-to-guess-name> --hide
 - No credentials → `401`
 - With credentials → the chat UI loads (dark theme, input box, connection dot green)
 - Type `/` in the input → command autocomplete appears
-- Send a prompt → streaming response with tool cards
-- Check the header shows the agent's model name and context usage
+- Send a prompt → streaming markdown with syntax-highlighted code blocks and rich tool cards
+- Bare `/model` → clickable model picker (25+ models with cost/context); pick updates the footer
+- Bare `/thinking` → level picker; footer shows model, context usage, and session cost
+- Spawn a subagent → ⌥ button appears; opens the Agent Hub with live progress
+- Agent with no API token → red error card with the agent's own guidance
 
 ### 5. Hand off
 
 Report: the public URL, credentials, which agent adapter is active, and the stop sequence.
-
-## Shared session behavior
-
-All connected clients share one agent process. Prompts from any participant are visible to all (with nicknames); an interrupt from one stops the turn for everyone. For private per-person sessions, use `agent-share`.
 
 ## Failure rules
 
