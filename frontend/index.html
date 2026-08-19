@@ -19,6 +19,8 @@
   header .dot.on { background:var(--success); }
   header h1 { font-size:14px; font-weight:600; color:var(--text-dim); flex:1; }
   header .agent-name { font-size:12px; color:var(--accent); }
+   header .status-info { font-size:11px; color:var(--text-dim); text-align:right; line-height:1.4; }
+   header .status-info .model { color:var(--accent); font-weight:500; }
 
   main { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
   main::-webkit-scrollbar { width:6px; }
@@ -26,7 +28,7 @@
 
   .msg { max-width:85%; line-height:1.6; font-size:14px; white-space:pre-wrap; word-break:break-word; }
   .msg.user { align-self:flex-end; background:var(--accent); color:#fff; padding:10px 14px; border-radius:var(--radius) var(--radius) 4px var(--radius); }
-  .msg.assistant { align-self:flex-start; background:var(--surface); padding:10px 14px; border-radius:var(--radius) var(--radius) var(--radius) 4px; border:1px solid var(--border); }
+  .msg.remote-user { align-self:flex-start; background:var(--surface); border:1px solid var(--accent); padding:10px 14px; border-radius:var(--radius) var(--radius) var(--radius) 4px; color:var(--text); font-size:13px; }
   .msg.assistant .thinking { color:var(--text-dim); font-style:italic; font-size:13px; margin-bottom:6px; }
 
   .tool-card { align-self:flex-start; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:0; max-width:85%; overflow:hidden; }
@@ -62,6 +64,10 @@
   <div class="dot" id="connDot"></div>
   <h1>Agent Frontend</h1>
   <span class="agent-name" id="agentName"></span>
+   <div class="status-info" id="statusInfo" style="display:none">
+     <div class="model" id="modelName"></div>
+     <div id="ctxInfo"></div>
+   </div>
 </header>
 
 <main id="chat"></main>
@@ -92,11 +98,15 @@ let reconnectTimer = null;
 
 // ── Rendering ─────────────────────────────────────────────────────────
 
-function addUserMsg(text) {
+function addUserMsg(text, isRemote) {
   currentAssistantEl = null; currentTextEl = null; currentThinkingEl = null;
   const el = document.createElement('div');
-  el.className = 'msg user';
-  el.textContent = text;
+  el.className = 'msg ' + (isRemote ? 'remote-user' : 'user');
+  if (isRemote) {
+    el.innerHTML = `<span style="font-size:11px;color:var(--text-dim);display:block;margin-bottom:4px;">↳ asked by another participant</span>${esc(text)}`;
+  } else {
+    el.textContent = text;
+  }
   chat.appendChild(el);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -242,6 +252,16 @@ function handleEvent(msg) {
     case 'agent_exited':
       setStatus(`agent exited (${msg.code})`);
       setStreaming(false);
+      break;
+    case 'state_update':
+      var si = document.getElementById('statusInfo');
+      var mn = document.getElementById('modelName');
+    case 'user_message':
+      addUserMsg(msg.content || '', true);
+      break;
+    case 'state_update':
+      if (mn && msg.model) mn.textContent = msg.model.provider + '/' + msg.model.id;
+      if (ci && msg.contextUsage) ci.textContent = Math.round(msg.contextUsage.tokens/1000) + 'k/' + Math.round(msg.contextUsage.contextWindow/1000) + 'k (' + msg.contextUsage.percent.toFixed(1) + '%)';
       break;
     case 'notice':
       setStatus(msg.content);

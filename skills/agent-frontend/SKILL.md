@@ -30,6 +30,7 @@ Phone/browser ── HTTPS ──→ Portal tunnel ──→ caddy (auth) ──
 - The bridge binds loopback only (`127.0.0.1`); Portal provides the public edge.
 - `--hide` on the tunnel — a chat interface gains nothing from being listed.
 - Long random password on the gate; hand it over once.
+- **Single agent session**: all connected clients share one agent process. Prompts from any participant are visible to all; an interrupt from one stops the turn for everyone. For multi-person access where each person needs a private session, use `agent-share` with separate tunnels per person. For collaborative shared-session use, this is the intended behavior.
 
 ## Workflow
 
