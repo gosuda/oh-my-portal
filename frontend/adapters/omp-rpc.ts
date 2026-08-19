@@ -47,6 +47,10 @@ export class OmpRpcAdapter implements AgentAdapter {
     this.write({ id: `s-${Date.now()}`, type: "get_state" });
   }
 
+  listModels() {
+    this.write({ id: `m-${Date.now()}`, type: "get_available_models" });
+  }
+  
   stop() {
     this.proc?.kill();
     this.proc = null;
@@ -143,6 +147,8 @@ export class OmpRpcAdapter implements AgentAdapter {
             const data = m.data as { agentInvoked?: boolean } | undefined;
             if (data?.agentInvoked === false) {
               this.emit({ type: "command_result" });
+              // Slash command may have changed model/compact state — refresh footer
+              this.pollState();
             }
           } else {
             this.emit({ type: "prompt_error", error: m.error || "prompt failed" });
@@ -155,6 +161,9 @@ export class OmpRpcAdapter implements AgentAdapter {
           if (d) {
             this.emit({ type: "state_update", model: d.model, contextUsage: d.contextUsage });
           }
+        } else if (m.command === "get_available_models" && m.success) {
+          const d = m.data as { models?: Array<{ provider: string; id: string }> } | undefined;
+          this.emit({ type: "model_list", models: d?.models || [] } as AgentEvent & { models: unknown[] });
         }
         break;
 

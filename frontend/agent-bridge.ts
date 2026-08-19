@@ -189,6 +189,11 @@ Bun.serve({
         session.adapter.prompt(text);
       }
 
+      else if (type === "get_models" && typeof msg.sessionId === "string") {
+        const session = sessions.get(msg.sessionId);
+        if (session) session.adapter.listModels?.();
+      }
+
       else if (type === "abort" && ws.activeSession) {
         const session = sessions.get(ws.activeSession);
         if (session) session.adapter.abort();

@@ -14,8 +14,10 @@ export interface AgentEvent {
     | "state_update"
     | "command_output"
     | "command_result"
+    | "model_list"
     | "prompt_error"
     | "notice";
+  models?: Array<{ provider: string; id: string }>;
   content?: string;
   name?: string;
   params?: Record<string, unknown>;
@@ -37,7 +39,8 @@ export interface AgentAdapter {
   abort(): void;
   /** Request current state (model, context usage). */
   pollState(): void;
-  /** Subscribe to events. */
+  /** List available models (optional — adapters without it skip the picker). */
+  listModels?(): void;
   onEvent(callback: (event: AgentEvent) => void): void;
   /** Clean shutdown. */
   stop(): void;

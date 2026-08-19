@@ -100,6 +100,22 @@ main::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
 .tool .bd .tool-result pre code { font-family:'SF Mono', 'Fira Code', 'Consolas', monospace; font-size:12px; line-height:1.5; }
 .tool .st.done { color:var(--success); }
 
+/* Slash command output + model picker */
+.msg.system, .msg.model-picker { align-self:stretch; max-width:100%; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; }
+.sys-label { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px; }
+.msg.system p, .msg.model-picker p { margin:0 0 6px; font-size:13px; }
+.msg.system code.ic, .msg.model-picker code.ic { background:var(--bg); border:1px solid var(--border); border-radius:4px; color:var(--accent); font-size:12px; padding:1px 5px; }
+.model-list { display:flex; flex-direction:column; gap:4px; }
+.model-item { display:flex; align-items:center; gap:10px; text-align:left; padding:8px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); cursor:pointer; font-size:13px; font-family:inherit; }
+.model-item:hover { border-color:var(--accent); }
+.model-item.current { border-color:var(--success); background:rgba(76,175,80,.08); }
+.mi-provider { color:var(--dim); font-size:11px; min-width:70px; }
+.mi-id { flex:1; font-weight:500; }
+.mi-check { color:var(--success); font-size:14px; }
+.mi-ctx { color:var(--dim); font-size:11px; }
+.mi-cost { color:var(--dim); font-size:11px; font-variant-numeric:tabular-nums; }
+.mi-badge { font-size:9px; color:var(--accent); border:1px solid var(--accent); border-radius:3px; padding:0 3px; line-height:14px; }
+
 .msg { max-width:85%; line-height:1.6; font-size:14px; word-break:break-word; }
 .msg.mine, .msg.theirs { white-space:pre-wrap; }
 .msg.mine { align-self:flex-end; background:var(--accent); color:#fff; padding:10px 14px; border-radius:var(--radius) var(--radius) 4px var(--radius); }

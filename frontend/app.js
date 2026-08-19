@@ -180,6 +180,61 @@ function renderNotice(t) {
   scrollBottom();
 }
 
+function renderCmdOutput(text) {
+  if (!text || !text.trim()) return;
+  // Render slash command output as a system-style message with markdown
+  agentEl = null; textEl = null; thinkEl = null; pendingMd = '';
+  const el = document.createElement('div');
+  el.className = 'msg system';
+  el.innerHTML = `<div class="sys-label">system</div>${md(text)}`;
+  chat.appendChild(el);
+  scrollBottom();
+}
+
+function renderModelPicker(models) {
+  if (!models.length) return;
+  agentEl = null; textEl = null; thinkEl = null; pendingMd = '';
+
+  // Get current model from status
+  const currentModel = (document.getElementById('model')?.textContent || '').trim();
+
+  const el = document.createElement('div');
+  el.className = 'msg model-picker';
+  el.innerHTML = `<div class="sys-label">select a model</div>`;
+
+  const list = document.createElement('div');
+  list.className = 'model-list';
+  for (const m of models) {
+    const full = m.provider + '/' + m.id;
+    const isCurrent = full === currentModel;
+    const cost = m.cost ? `$${m.cost.input}/$${m.cost.output}` : '';
+    const ctx = m.contextWindow ? `${Math.round(m.contextWindow / 1024)}k` : '';
+    const item = document.createElement('button');
+    item.className = 'model-item' + (isCurrent ? ' current' : '');
+    item.innerHTML = `
+      <span class="mi-provider">${esc(m.provider)}</span>
+      <span class="mi-id">${esc(m.name || m.id)}</span>
+      ${ctx ? `<span class="mi-ctx">${ctx}</span>` : ''}
+      ${cost ? `<span class="mi-cost">${cost}</span>` : ''}
+      ${m.reasoning ? '<span class="mi-badge">R</span>' : ''}
+      ${isCurrent ? '<span class="mi-check">✓</span>' : ''}`;
+    item.onclick = () => {
+      if (ws && ws.readyState === 1 && activeSessionId) {
+        ws.send(JSON.stringify({
+          type: 'prompt',
+          message: `/model ${m.provider}/${m.id}`,
+          sessionId: activeSessionId,
+          nickname: nick,
+        }));
+        el.remove();
+      }
+    };
+    list.appendChild(item);
+  }
+  el.appendChild(list);
+  chat.appendChild(el);
+  scrollBottom();
+}
 function setStream(on) {
   streaming = on;
   sendBtn.style.display = on ? 'none' : '';
@@ -253,8 +308,12 @@ function handleEvent(msg) {
       setStream(false);
       break;
     case 'command_output':
-      renderNotice(msg.content || msg.output || '');
+      renderCmdOutput(msg.content || msg.output || '');
       break;
+    case 'model_list': {
+      renderModelPicker(msg.models || []);
+      break;
+    }
     case 'agent_exited':
       renderNotice('agent exited');
       setStream(false);
@@ -322,6 +381,10 @@ function send() {
     sessionId: activeSessionId,
     nickname: nick,
   }));
+  // Bare /model → request model list for picker
+  if (t === '/model') {
+    ws.send(JSON.stringify({ type: 'get_models', sessionId: activeSessionId }));
+  }
 }
 
 function stop() {
