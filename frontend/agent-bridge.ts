@@ -51,7 +51,20 @@ function createSession(): Session {
   const id = `s${++sessionCounter}_${Date.now().toString(36)}`;
   const adapter = createAdapter();
   const session: Session = { id, adapter, title: "New Chat", createdAt: Date.now(), messages: [] };
-  adapter.onEvent((event) => sendToSession(id, event));
+
+  // Record assistant turns so session switching and page refreshes replay
+  // the full conversation, not just the user's side.
+  let turnText = "";
+  adapter.onEvent((event) => {
+    if (event.type === "text_delta" && event.content) {
+      turnText += event.content;
+    } else if (event.type === "agent_end") {
+      if (turnText.trim()) session.messages.push({ role: "assistant", content: turnText });
+      turnText = "";
+    }
+    sendToSession(id, event);
+  });
+
   adapter.start();
   sessions.set(id, session);
   console.log(`[bridge] session ${id} created (${sessions.size} active)`);
@@ -88,6 +101,17 @@ function sendToSession(sessionId: string, event: AgentEvent): void {
       try { ws.send(data); } catch { /* gone */ }
     }
   }
+}
+
+// Tell a client what the session's adapter can do — the frontend shows
+// only the features the active agent supports.
+function sendCapabilities(ws: ClientWebSocket, session: Session): void {
+  ws.send(JSON.stringify({
+    type: "capabilities",
+    adapter: session.adapter.name,
+    caps: session.adapter.capabilities,
+    commands: session.adapter.commands?.() ?? [],
+  }));
 }
 
 function broadcastAll(obj: Record<string, unknown>): void {
@@ -132,10 +156,18 @@ Bun.serve({
       ws.activeSession = null;
       console.log(`[bridge] client connected (${clients.size})`);
 
-      // Auto-create session on connect
-      const session = createSession();
+      // Reconnect (page refresh) → reattach to the most recent session;
+      // only create one when none exist.
+      const latest = Array.from(sessions.values())
+        .sort((a, b) => b.createdAt - a.createdAt)[0];
+      const session = latest ?? createSession();
       ws.activeSession = session.id;
+      sendCapabilities(ws, session);
       ws.send(JSON.stringify({ type: "session_switched", sessionId: session.id }));
+      if (latest) {
+        ws.send(JSON.stringify({ type: "session_history", messages: session.messages }));
+        session.adapter.pollState();
+      }
       broadcastAll({ type: "session_list", sessions: sessionList() });
     },
 
@@ -144,10 +176,10 @@ Bun.serve({
       try { msg = JSON.parse(message); } catch { return; }
 
       const type = msg.type as string;
-
       if (type === "new_session") {
         const session = createSession();
         ws.activeSession = session.id;
+        sendCapabilities(ws, session);
         ws.send(JSON.stringify({ type: "session_switched", sessionId: session.id }));
         broadcastAll({ type: "session_list", sessions: sessionList() });
       }
@@ -156,6 +188,7 @@ Bun.serve({
         const session = sessions.get(msg.sessionId);
         if (session) {
           ws.activeSession = session.id;
+          sendCapabilities(ws, session);
           ws.send(JSON.stringify({ type: "session_switched", sessionId: session.id }));
           ws.send(JSON.stringify({ type: "session_history", messages: session.messages }));
           session.adapter.pollState();
@@ -187,6 +220,20 @@ Bun.serve({
 
         sendToSession(session.id, { type: "user_message", content: text, from });
         session.adapter.prompt(text);
+      }
+
+      else if (type === "get_models" && typeof msg.sessionId === "string") {
+        const session = sessions.get(msg.sessionId);
+        if (session) session.adapter.listModels?.();
+      }
+
+      else if (type === "get_subagent_messages" && typeof msg.sessionId === "string") {
+        const session = sessions.get(msg.sessionId);
+        session?.adapter.getSubagentMessages?.(
+          String(msg.subagentId || ""),
+          String(msg.sessionFile || ""),
+          typeof msg.fromByte === "number" ? msg.fromByte : 0,
+        );
       }
 
       else if (type === "abort" && ws.activeSession) {

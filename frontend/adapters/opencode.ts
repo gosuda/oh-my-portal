@@ -3,9 +3,11 @@
 // Requires: opencode serve running on localhost (or accessible URL).
 
 import type { AgentAdapter, AgentEvent } from "./types";
+import { NO_CAPS } from "./types";
 
 export class OpencodeAdapter implements AgentAdapter {
   readonly name = "opencode";
+  readonly capabilities = { ...NO_CAPS }; // streaming + sessions
   private callback: ((e: AgentEvent) => void) | null = null;
   private baseUrl: string;
   private controller: AbortController | null = null;

@@ -40,15 +40,16 @@ Expose a local stdio MCP server to other machines' agents: a supergateway bridge
 
 ### agent-frontend (universal)
 
-A rich web chat for any CLI agent — streaming text, tool cards, thinking display, slash commands with autocomplete, per-person nicknames — served from a Bun bridge with pluggable adapters. OMP gets the full feature set (streaming, tools, state, slash commands); Claude Code, Codex, and opencode connect via SDK/API adapters; everything else works through a subprocess fallback. The frontend is agent-agnostic: adding an adapter requires zero frontend changes.
+A rich mobile-first web chat for any CLI agent — streaming markdown with syntax highlighting, rich tool cards, model/thinking pickers, session cost tracking, and an Agent Hub with subagent transcripts. Adapters declare capabilities; the frontend shows exactly what the active agent supports. OMP gets the full set; Claude Code, Codex, and opencode connect with multi-turn history; everything else works through a streaming subprocess fallback. Adding an adapter requires zero frontend changes.
 
 ```
 Phone → Portal → caddy gate → agent-bridge.ts
-                                      ├── omp-rpc adapter (full)
-                                      ├── claude-code adapter (SDK)
-                                      ├── codex adapter (SDK)
-                                      ├── opencode adapter (API)
-                                      └── simple adapter (any CLI)
+                                      ├── omp-rpc adapter (full: pickers, hub, cost, commands)
+                                      ├── claude-code adapter (SDK + history)
+                                      ├── codex adapter (SDK + history)
+                                      ├── opencode adapter (API session)
+                                      └── simple adapter (any CLI, line-streamed)
+```
 
 ## Install
 
